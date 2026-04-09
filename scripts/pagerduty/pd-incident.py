@@ -33,7 +33,6 @@ from pathlib import Path
 # Constants
 _PAGERDUTY_BASE_URL = "https://api.pagerduty.com"
 _PAGERDUTY_API_VERSION = "application/vnd.pagerduty+json;version=2"
-_DEFAULT_DOMAIN = ""
 _OUTPUT_FORMATS = ["text", "markdown", "compact", "json"]
 _JSON_INDENT = 2
 _PAYLOAD_INDENT = 8
@@ -202,6 +201,7 @@ def extract_incident_info(
     incident_data: Dict[str, Any],
     notes: List[Dict[str, Any]],
     alerts: List[Dict[str, Any]],
+    domain: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Extracts relevant incident information from API responses.
 
@@ -220,14 +220,14 @@ def extract_incident_info(
     if service_info:
         service_name = service_info.get("summary", service_info.get("name", "N/A"))
 
-    # Extract domain from service or incident data - fallback to generic
-    incident_url = (
-        f"https://{_DEFAULT_DOMAIN}.pagerduty.com/incidents/{incident.get('id', 'N/A')}"
-    )
-    # Try to extract from HTML URL if available
+    # Prefer html_url from API; fall back to domain-based URL if domain is known
     html_url = incident.get("html_url", "")
     if html_url:
         incident_url = html_url
+    elif domain:
+        incident_url = f"https://{domain}.pagerduty.com/incidents/{incident.get('id', 'N/A')}"
+    else:
+        incident_url = f"https://app.pagerduty.com/incidents/{incident.get('id', 'N/A')}"
 
     # Extract event details from alerts
     event_details = []
@@ -510,6 +510,13 @@ def main() -> None:
         "-o",
         help="Save output to file",
     )
+    parser.add_argument(
+        "--domain",
+        "-d",
+        default=os.getenv("PAGERDUTY_DOMAIN") or os.getenv("PD_DOMAIN"),
+        help="PagerDuty subdomain (e.g. 'mycompany'). Falls back to PAGERDUTY_DOMAIN or PD_DOMAIN env var. "
+             "Only needed if the API response omits html_url.",
+    )
 
     args = parser.parse_args()
 
@@ -526,7 +533,7 @@ def main() -> None:
 
     # Extract and format information
     with console.status("[bold magenta]Processing incident data..."):
-        info = extract_incident_info(incident_data, notes, alerts)
+        info = extract_incident_info(incident_data, notes, alerts, domain=args.domain)
 
     # Create summary table
     table = Table(title=f"📊 Incident {args.incident_id} Summary")
