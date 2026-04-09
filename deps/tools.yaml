@@ -1,0 +1,47 @@
+# Optional "usual tools" for a new system (second bootstrap batch on macOS).
+# Linux: auto-installed via pacman/paru/apt/dnf; paste lines printed as fallback.
+#
+# yazi: in Arch (extra) and Homebrew only. Ubuntu/Fedora: install via snap
+#   (sudo snap install yazi --classic) or binary from github.com/sxyazi/yazi.
+
+brew:
+  - bat
+  - duf
+  - fd
+  - git
+  - neovim
+  - ripgrep
+  - tmux
+  - yazi
+  - zsh
+
+apt_packages:
+  - bat
+  - duf
+  - fd-find
+  - git
+  - neovim
+  - ripgrep
+  - tmux
+  - zsh
+
+dnf_packages:
+  - bat
+  - duf
+  - fd-find
+  - git
+  - neovim
+  - ripgrep
+  - tmux
+  - zsh
+
+pacman_packages:
+  - bat
+  - duf
+  - fd
+  - git
+  - neovim
+  - ripgrep
+  - tmux
+  - yazi
+  - zsh

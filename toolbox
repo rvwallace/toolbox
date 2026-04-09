@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+# Proxy: run bin/toolbox; build it with Go if missing.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export TOOLBOX_ROOT="$ROOT"
+BIN="$ROOT/bin/toolbox"
+
+if [[ -x "$BIN" ]]; then
+	exec "$BIN" "$@"
+fi
+
+if ! command -v go &>/dev/null; then
+	echo "toolbox: $BIN not found and 'go' is not on PATH — install Go or build: (cd \"$ROOT\" && go build -o bin/toolbox ./cmd/toolbox)" >&2
+	exit 1
+fi
+
+mkdir -p "$ROOT/bin"
+( cd "$ROOT" && go build -o "$BIN" ./cmd/toolbox )
+exec "$BIN" "$@"
