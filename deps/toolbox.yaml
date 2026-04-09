@@ -1,0 +1,27 @@
+# Toolbox repo prerequisites (beyond uv/go/swift on mac — see docs/toolbox.md).
+# macOS: formula names for Homebrew. Linux: apt_packages / dnf_packages for copy-paste lines.
+#
+# bash: Homebrew only — macOS ships an old bash; Linux uses the distro /usr/bin/bash.
+# ffmpeg: includes ffprobe on both Homebrew and typical apt/dnf packages (no separate ffprobe line).
+
+brew:
+  - bash
+  - ffmpeg
+  - figurine
+  - fzf
+  - jq
+
+apt_packages:
+  - ffmpeg
+  - fzf
+  - jq
+
+dnf_packages:
+  - ffmpeg
+  - fzf
+  - jq
+
+pacman_packages:
+  - ffmpeg
+  - fzf
+  - jq
