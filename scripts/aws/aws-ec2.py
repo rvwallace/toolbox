@@ -44,7 +44,6 @@ class AppState:
         self.region = region
 
 INSTANCE_ID_PATTERN = re.compile(r"^i-[0-9a-fA-F]{8,17}$")
-DEFAULT_KEY_DIR = Path.home() / "aws-key-pairs"
 
 
 def iter_instances(response: dict) -> Iterable[dict]:
@@ -418,15 +417,16 @@ def find_key(
     identifier: str = typer.Argument(
         ..., help="Instance id (i-xxxx) or Name tag to inspect."
     ),
-    keys_dir: Path = typer.Option(
-        DEFAULT_KEY_DIR,
+    keys_dir: Path | None = typer.Option(
+        None,
         "--keys-dir",
+        envvar="AWS_EC2_KEY_DIR",
         file_okay=False,
         dir_okay=True,
         exists=False,
         writable=False,
         resolve_path=True,
-        help="Directory to search for key files.",
+        help="Directory to search for key files (or set AWS_EC2_KEY_DIR).",
     ),
     key_file_only: bool = typer.Option(
         False,
@@ -436,6 +436,10 @@ def find_key(
 ) -> None:
     """Find the EC2 key pair name and matching local file."""
     state = ctx.ensure_object(AppState)
+
+    if keys_dir is None:
+        console.print("[red]AWS_EC2_KEY_DIR is not set. Export it or pass --keys-dir.[/red]")
+        raise typer.Exit(1)
 
     try:
         client = create_ec2_client(profile=state.profile, region=state.region)
