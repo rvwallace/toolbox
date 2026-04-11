@@ -33,7 +33,7 @@ When something in the plan or repo looks wrong or contradictory, **ask the user*
 
 | Category | Commands |
 |----------|----------|
-| aws | `aws-ec2`, `aws-eks`, `aws-find-ip`, `aws-screen-monitor`, `aws-token-timeout`, `saml2aws-op`, `ssm-connect`, `ssm-pyconnect` |
+| aws | `aws-ec2`, `aws-eks`, `aws-env`, `aws-find-ip`, `aws-screen-monitor`, `aws-token-timeout`, `saml2aws-op`, `ssm-connect`, `ssm-pyconnect` |
 | net | `cert-check`, `httpkit`, `netbird-status`, `netbird-up`, `netinfo` |
 | k8s | `k8s-hpa-analyzer`, `k8s-restart-resource` |
 | pagerduty | `pd-incident`, `pd-report`, `pyduty` |
@@ -47,7 +47,7 @@ When something in the plan or repo looks wrong or contradictory, **ask the user*
 
 Shell modules:
 - `ai.sh` / `ai.bash` / `ai.zsh` - `claude.monitor`; adds the Alt-e `aichat` widget and completions for `aichat`
-- `aws.sh` / `aws.bash` / `aws.zsh` - `aws.caller_identity` function and completions
+- `aws.sh` / `aws.bash` / `aws.zsh` - `aws.caller_identity` function; `aws.env` shell wrapper (delegates set/profile/region/show/token-status to `aws-env` binary; handles `clear` in shell); profile cache and completions
 - `chef.sh` / `chef.bash` / `chef.zsh` - Chef environment helper functions
 - `cmux.sh` / `cmux.zsh` - `cmux.ssh`, `cmux.ssh.jc`, `cssh`, `csshjc` and completions
 - `git.sh` / `git.bash` / `git.zsh` - `git.ignore.add`, git helper functions and completions
@@ -69,6 +69,7 @@ Compiled tools:
 Go CLIs (beyond `toolbox`):
 - `ghrel` - GitHub release TUI (`cmd/ghrel/`, Bubble Tea v2)
 - `ssm-connect` - EC2 Session Manager TUI (`cmd/ssm-connect/`, Bubble Tea v2)
+- `aws-env` - AWS profile/region picker TUI + token-status (`cmd/aws-env/`, Bubble Tea v2); used via `aws.env` shell wrapper in `shell/modules/aws.sh`
 
 Go CLI pattern:
 - Use `docs/go-cli.md` for repo-wide Go command conventions
