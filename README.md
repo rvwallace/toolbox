@@ -32,6 +32,7 @@ netinfo
 |---------|-------------|
 | `aws-ec2` | EC2 list, describe, find SSH key file |
 | `aws-eks` | EKS list, describe, kubeconfig |
+| `aws-env` | Profile/region picker TUI; token status — used via `aws.env` shell wrapper |
 | `aws-find-ip` | Find an IP across profiles and US regions |
 | `aws-screen-monitor` | EC2 console screenshot loop during reboots |
 | `aws-token-timeout` | AWS session token expiration |
@@ -168,7 +169,7 @@ After `source shell/init.sh`:
 
 | Module | Functions |
 |--------|-----------|
-| `aws.sh` | `aws.caller_identity` |
+| `aws.sh` | `aws.caller_identity`; `aws.env` (set/profile/region/show/clear/token-status — wraps `aws-env`) |
 | `ai.sh` | `claude.monitor` |
 | `ai.zsh` | Alt-e `aichat` widget plus zsh completion for `aichat` |
 | `cmux.zsh` | zsh completion for `cmux`, `cssh`, and `csshjc` |
