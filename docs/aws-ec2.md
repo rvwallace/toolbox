@@ -31,9 +31,16 @@ One instance by **instance id** (`i-...`) or by **Name tag substring** (substrin
 
 ### `find-key`
 
-Resolves the key pair name for an instance id or Name tag, then searches **`--keys-dir`** for a matching private key file (default directory is set in the script; often a team-specific path under your home directory).
+Resolves the key pair name for an instance id or Name tag, then searches **`--keys-dir`** for a matching private key file (`.pem` or `.key`).
 
-- `--key-file-only`: print only the path when a file is found
+**Required:** set `AWS_EC2_KEY_DIR` to your key pair directory, or pass `--keys-dir` explicitly. The command exits with an error if neither is provided.
+
+```bash
+export AWS_EC2_KEY_DIR=~/aws-key-pairs   # add to ~/.zshrc.local.pre
+```
+
+- `--keys-dir` / `AWS_EC2_KEY_DIR`: directory to search for key files
+- `--key-file-only`: print only the path when a file is found (useful for scripting)
 
 ## Scenarios
 
