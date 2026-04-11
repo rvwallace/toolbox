@@ -1,0 +1,12 @@
+# Example ~/.zshrc.local.pre — copy to ~/.zshrc.local.pre and fill in your values.
+#
+# Sourced early in shell init (before .zshrc). Use for machine-local env vars
+# that should not be committed.
+
+# --- AWS ---
+
+# AWS profile used for saml2aws token expiry checks (aws.env token-status / show)
+# export SAML2AWS_PROFILE=myprofile
+
+# Directory containing EC2 key pair files (.pem / .key) — required by: aws-ec2 find-key
+# export AWS_EC2_KEY_DIR=~/path/to/KeyPairs
