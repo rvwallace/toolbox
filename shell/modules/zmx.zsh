@@ -23,10 +23,18 @@ zle -N _zmx_detach
 bindkey -M emacs "^[d" _zmx_detach
 bindkey -M viins "^[d" _zmx_detach
 
-# Generate completions asynchronously so it does not block shell startup
-if type zinit >/dev/null 2>&1; then
-    zinit ice wait"1" lucid atload'eval "$(zmx completions zsh)"'
-    zinit light zdharma-continuum/null
-else
-    eval "$(zmx completions zsh)"
-fi
+_toolbox_zmx_load_zsh_completion() {
+    local cache_dir cache_file version_file current_version
+    cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/silentcastle/toolbox/completions"
+    cache_file="${cache_dir}/_zmx"
+    version_file="${cache_dir}/zmx.version"
+    current_version="$(zmx --version 2>/dev/null | tr -d '\r')"
+    [[ -n "$current_version" ]] || return 0
+
+    toolbox_completion_cache_ensure "$cache_file" "$version_file" "$current_version" zmx completions zsh || return 0
+
+    # shellcheck source=/dev/null
+    source "$cache_file" >/dev/null 2>&1 || return 0
+}
+
+_toolbox_zmx_load_zsh_completion
