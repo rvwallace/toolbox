@@ -49,5 +49,6 @@ These enhancements are exclusively available for interactive `zsh` users. They p
 
 ### Completions Optimization
 *   The module ensures `zmx` completions are loaded for your shell.
-*   **Async Loading**: It detects if the `zinit` plugin manager is installed. If so, it asynchronously loads completions in the background (`wait"1"`) to prevent blocking or slowing down your initial shell launch.
-*   **Fallback**: If `zinit` is not available, it safely falls back to standard synchronous `eval "$(zmx completions zsh)"`.
+*   Generated completion output is cached at `~/.cache/silentcastle/toolbox/completions/_zmx`.
+*   A sidecar version file at `~/.cache/silentcastle/toolbox/completions/zmx.version` is used to refresh the cache only when the installed `zmx` version changes.
+*   Module load remains quiet and fails soft if completion generation is unavailable.
