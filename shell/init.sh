@@ -58,6 +58,60 @@ _toolbox_csv_add() {
 	fi
 }
 
+_toolbox_write_file_atomic() {
+	local target_path="$1"
+	local tmp_path=""
+
+	tmp_path=$(mktemp "${target_path}.tmp.XXXXXX" 2>/dev/null) || return 1
+	if ! cat >"$tmp_path"; then
+		rm -f "$tmp_path"
+		return 1
+	fi
+
+	if ! mv "$tmp_path" "$target_path"; then
+		rm -f "$tmp_path"
+		return 1
+	fi
+
+	return 0
+}
+
+toolbox_completion_cache_ensure() {
+	local cache_file="$1"
+	local version_file="$2"
+	local current_version="$3"
+	shift 3 || true
+
+	[[ -n "$cache_file" && -n "$version_file" && -n "$current_version" ]] || return 1
+	(($# > 0)) || return 1
+
+	local cached_version=""
+	local needs_refresh=1
+
+	if [[ -s "$cache_file" && -s "$version_file" ]]; then
+		IFS= read -r cached_version <"$version_file" || true
+		if [[ "$cached_version" == "$current_version" ]]; then
+			needs_refresh=0
+		fi
+	fi
+
+	if (( needs_refresh )); then
+		local cache_dir
+		cache_dir="${cache_file%/*}"
+		mkdir -p "$cache_dir" 2>/dev/null || return 1
+
+		if ! "$@" 2>/dev/null | _toolbox_write_file_atomic "$cache_file"; then
+			return 1
+		fi
+
+		if ! printf '%s\n' "$current_version" | _toolbox_write_file_atomic "$version_file"; then
+			return 1
+		fi
+	fi
+
+	return 0
+}
+
 _toolbox_status_remove_active() {
 	local stem="$1"
 	local current="${TOOLBOX_SHELL_ACTIVE:-}"
@@ -272,11 +326,13 @@ fi
 unset -f _toolbox_stem_disabled
 unset -f _toolbox_csv_contains
 unset -f _toolbox_csv_add
+unset -f _toolbox_write_file_atomic
 unset -f _toolbox_status_remove_active
 unset -f _toolbox_status_set_unavailable
 unset -f _toolbox_status_clear_unavailable
 unset -f toolbox_mark_module_active
 unset -f toolbox_mark_module_unavailable
+unset -f toolbox_completion_cache_ensure
 unset -f toolbox_require_commands
 unset -f toolbox_require_interactive
 unset -f toolbox_require_tmux_session
