@@ -53,6 +53,7 @@ Shell modules:
 - `git.sh` / `git.bash` / `git.zsh` - `git.ignore.add`, git helper functions and completions
 - `kube.sh` / `kube.bash` / `kube.zsh` - Kubernetes interactive shell module (`k.env` helper)
 - `net.sh` - network-related shell helpers
+- `sesh.bash` / `sesh.zsh` - cached generated `sesh` completions with version-sidecar invalidation
 - `tfswitch.bash` / `tfswitch.zsh` - shell integrations for `tfswitch` (if installed)
 - `tmux.sh` / `tmux.bash` / `tmux.zsh` - `tp` tmux popup helper and completions
 - `zmx.sh` / `zmx.bash` / `zmx.zsh` - `zmx.select`, `zmx.history`, `zmx.kill`, `zmx.detach`, `zmx.wait` (requires `zmx` and `fzf`); keybindings: Alt-a → `zmx attach $(basename $PWD)`; Alt-d → `zmx detach`
@@ -62,6 +63,8 @@ Shell module pattern:
 - Put zsh-only widgets, keybindings, and completions in `shell/modules/*.zsh`
 - Put bash-only widgets, keybindings, and completions in `shell/modules/*.bash`
 - Prefer toolbox-owned completions to live beside the toolbox helper they complete
+- For generated completions, use `toolbox_completion_cache_ensure` from `shell/init.sh` with a cache file + version sidecar (store under `~/.cache/silentcastle/toolbox/completions/`)
+- Keep shell startup quiet: no `echo` in module load paths; fail soft when completion generation is unavailable
 
 Compiled tools:
 - `netinfo` - Swift binary (icons by default, use `--plain` for text)
