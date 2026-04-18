@@ -193,6 +193,9 @@ Toolbox shell modules use a companion-file pattern when a helper needs shell-spe
 - Put zsh-only widgets, keybindings, and completions in `shell/modules/*.zsh`
 - Put bash-only widgets, keybindings, and completions in `shell/modules/*.bash` (**Note**: requires Bash v4+; macOS users should update via `brew install bash`)
 - Keep toolbox-owned completions beside the toolbox helper they complete
+- For generated completion scripts, cache them under `~/.cache/silentcastle/toolbox/completions/` and store a sidecar version file
+- Use `toolbox_completion_cache_ensure <cache_file> <version_file> <current_version> <generator...>` from `shell/init.sh` to refresh cache only when needed
+- Keep module load paths silent (no startup `echo`); fail soft if completion generation is unavailable
 
 Examples in this repo:
 
@@ -201,6 +204,7 @@ Examples in this repo:
 - `shell/modules/cmux.sh` defines `cssh` / `csshjc`; `shell/modules/cmux.zsh` adds zsh completion for `cmux` and the wrapper helpers
 - `shell/modules/ai.zsh` combines zsh widget behavior and `aichat` completion
 - `shell/modules/aws.sh` defines `aws.env`; `shell/modules/aws.bash` and `shell/modules/aws.zsh` provide respective cross-shell autocomplete hooks
+- `shell/modules/sesh.bash` and `shell/modules/sesh.zsh` load cached generated completions with version-sidecar invalidation
 
 This is intentionally different from a separate autoloaded `functions/` and `completions/` tree. For toolbox-owned shell behavior, prefer sourced modules so the helper and its integration live in one place.
 
