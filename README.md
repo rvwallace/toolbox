@@ -171,7 +171,7 @@ After `source shell/init.sh`:
 |--------|-----------|
 | `aws.sh` | `aws.caller_identity`; `aws.env` (set/profile/region/show/clear/token-status — wraps `aws-env`) |
 | `ai.sh` | `claude.monitor` |
-| `ai.zsh` | Alt-e `aichat` widget plus zsh completion for `aichat` |
+| `ai.zsh` | Alt-e `aichat` dispatcher (`docs/ai.md`) plus zsh completion for `aichat` |
 | `cmux.zsh` | zsh completion for `cmux`, `cssh`, and `csshjc` |
 | `git.sh` | `git.ignore.add` plus git helper functions |
 | `tmux.sh` | `tp` popup helper |

@@ -3,19 +3,25 @@
 # -----------------
 # AI Widgets
 # -----------------
-# WARNING: AI-generated commands are inserted but NOT executed automatically.
-# Review all commands before pressing Enter. AI may hallucinate dangerous commands.
-# These widgets are conveniences, not guarantees of correctness.
-# Always verify AI output before execution, especially for destructive operations.
+# WARNING: One-liners: buffer is filled with a suggested command — not run until Enter.
+# Modes (#ex / …): BUFFER becomes `aichat -S -r 'role' 'payload'` then zle .accept-line (shell runs aichat).
+# AI may hallucinate; these widgets are conveniences, not guarantees of correctness.
 
-# aichat
+# aichat (dispatcher: see toolbox_aichat_widget_run in ai.sh)
 # Bind: Alt-e
 _aichat_zsh() {
-    if [[ -n "$BUFFER" ]]; then
-        local _old=$BUFFER
-        BUFFER+="⌛"
-        zle -I && zle redisplay
-        BUFFER=$(aichat -e "$_old")
+    if [[ -z "$BUFFER" ]]; then
+        return 0
+    fi
+    local _old=$BUFFER _out
+    BUFFER+="⌛"
+    zle -I && zle redisplay
+    _out=$(toolbox_aichat_widget_run "$_old")
+    if [[ "$_out" == __TOOLBOX_AICHAT_SUBMIT__' '* ]]; then
+        BUFFER="${_out#__TOOLBOX_AICHAT_SUBMIT__ }"
+        zle .accept-line
+    else
+        BUFFER="$_out"
         zle end-of-line
     fi
 }
