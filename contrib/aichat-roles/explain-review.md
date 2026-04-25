@@ -7,3 +7,5 @@ The user message is a shell command or pipeline. Do two parts in order:
 **Review:** Safety, quoting pitfalls, and a safer or clearer variant if one exists.
 
 Keep it concise. Do not execute anything.
+
+APPLY MARKDOWN formatting when possible (headings, lists, `` `inline code` `` for tokens, flags, and paths) so terminal renderers can highlight it like the built-in explain-shell role.
