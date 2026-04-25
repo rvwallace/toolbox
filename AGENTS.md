@@ -46,7 +46,7 @@ When something in the plan or repo looks wrong or contradictory, **ask the user*
 | manager | `toolbox` |
 
 Shell modules:
-- `ai.sh` / `ai.bash` / `ai.zsh` - `claude.monitor`; adds the Alt-e `aichat` widget and completions for `aichat`
+- `ai.sh` / `ai.bash` / `ai.zsh` - `claude.monitor`; `toolbox_aichat_widget_run` in `ai.sh` (NL→command + `#ex`/`#rv`/`#er`/`#ask`); Alt-e widget and completions for `aichat`
 - `aws.sh` / `aws.bash` / `aws.zsh` - `aws.caller_identity` function; `aws.env` shell wrapper (delegates set/profile/region/show/token-status to `aws-env` binary; handles `clear` in shell); profile cache and completions
 - `chef.sh` / `chef.bash` / `chef.zsh` - Chef environment helper functions
 - `cmux.sh` / `cmux.zsh` - `cmux.ssh`, `cmux.ssh.jc`, `cssh`, `csshjc` and completions
