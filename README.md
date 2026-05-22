@@ -107,7 +107,7 @@ netinfo
 
 ## Documentation
 
-Longer guides (examples, env vars, scenarios) live under `docs/`. For the **manager**, bootstrap, `toolboxctl`, and `shell.yaml`, see [`docs/toolbox.md`](docs/toolbox.md). For Go command standards, see [`docs/go-cli.md`](docs/go-cli.md). For Python, shell, Swift, and cross-tool metadata standards, see [`docs/tool-authoring.md`](docs/tool-authoring.md). For HTTP tooling start with `docs/httpkit.md`, or see **Documentation** in `AGENTS.md` for the full list.
+Longer guides (examples, env vars, scenarios) live under `docs/`. For the **manager**, bootstrap, `toolboxctl`, and `shell.yaml`, see [`docs/toolbox.md`](docs/toolbox.md). For Terraform shell helpers (`tf.plan.save`, MR plans), see [`docs/terraform.md`](docs/terraform.md). For Go command standards, see [`docs/go-cli.md`](docs/go-cli.md). For Python, shell, Swift, and cross-tool metadata standards, see [`docs/tool-authoring.md`](docs/tool-authoring.md). For HTTP tooling start with `docs/httpkit.md`, or see **Documentation** in `AGENTS.md` for the full list.
 
 ## Installation
 
