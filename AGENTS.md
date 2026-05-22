@@ -53,8 +53,8 @@ Shell modules:
 - `git.sh` / `git.bash` / `git.zsh` - `git.ignore.add`, git helper functions and completions
 - `kube.sh` / `kube.bash` / `kube.zsh` - Kubernetes interactive shell module (`k.env` helper)
 - `net.sh` - network-related shell helpers
+- `terraform.sh` / `terraform.bash` / `terraform.zsh` - `tf.plan.save`, `tf.state.show.save`, `tf.apply.save`, `tf.apply.last`, Terraform aliases (`tf`, `tf.plan`, …), `tfswitch` alias + chpwd hook; `tf.amd64` Docker runner for special-case linux/amd64 on Apple Silicon (see `docs/terraform.md`)
 - `sesh.bash` / `sesh.zsh` - cached generated `sesh` completions with version-sidecar invalidation
-- `tfswitch.bash` / `tfswitch.zsh` - shell integrations for `tfswitch` (if installed)
 - `tmux.sh` / `tmux.bash` / `tmux.zsh` - `tp` tmux popup helper and completions
 - `zmx.sh` / `zmx.bash` / `zmx.zsh` - `zmx.select`, `zmx.history`, `zmx.kill`, `zmx.detach`, `zmx.wait` (requires `zmx` and `fzf`); keybindings: Alt-a → `zmx attach $(basename $PWD)`; Alt-d → `zmx detach`
 
@@ -218,6 +218,7 @@ Extended guides (same style as `docs/httpkit.md`) live under `docs/`:
 - `docs/mix-audio.md`
 - `docs/ghrel.md`
 - `docs/ai.md`, `docs/zmx.md`
+- `docs/terraform.md` — shell module (`tf.plan.save`, MR plan archive, `tf.amd64`)
 - `docs/toolbox.md` — manager (`cmd/toolbox`), proxy, bootstrap, `deps/*.yaml`, user `shell.yaml`, `toolboxctl`
 
 ## File Reference
