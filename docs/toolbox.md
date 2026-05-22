@@ -204,6 +204,7 @@ Examples in this repo:
 - `shell/modules/cmux.sh` defines `cssh` / `csshjc`; `shell/modules/cmux.zsh` adds zsh completion for `cmux` and the wrapper helpers
 - `shell/modules/ai.zsh` combines zsh widget behavior and `aichat` completion
 - `shell/modules/aws.sh` defines `aws.env`; `shell/modules/aws.bash` and `shell/modules/aws.zsh` provide respective cross-shell autocomplete hooks
+- `shell/modules/terraform.sh` defines MR plan helpers (`tf.plan.save`, …), Terraform aliases, and optional `tf.amd64` for special-case linux/amd64 on Apple Silicon; `terraform.zsh` / `terraform.bash` add `tfswitch` chpwd hooks and completions (see `docs/terraform.md`)
 - `shell/modules/sesh.bash` and `shell/modules/sesh.zsh` load cached generated completions with version-sidecar invalidation
 
 This is intentionally different from a separate autoloaded `functions/` and `completions/` tree. For toolbox-owned shell behavior, prefer sourced modules so the helper and its integration live in one place.
