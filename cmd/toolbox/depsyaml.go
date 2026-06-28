@@ -16,6 +16,7 @@ type depsFile struct {
 	AptPackages    []string   `yaml:"apt_packages"`
 	DnfPackages    []string   `yaml:"dnf_packages"`
 	PacmanPackages []string   `yaml:"pacman_packages"`
+	GoInstall      []string   `yaml:"go_install"`
 	Descriptions   []depsItem `yaml:"items"`
 }
 
@@ -67,6 +68,7 @@ func (f *depsFile) mergeItemsIntoLists() {
 	f.AptPackages = dedupeStrings(f.AptPackages)
 	f.DnfPackages = dedupeStrings(f.DnfPackages)
 	f.PacmanPackages = dedupeStrings(f.PacmanPackages)
+	f.GoInstall = dedupeStrings(f.GoInstall)
 }
 
 func dedupeStrings(s []string) []string {
