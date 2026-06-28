@@ -71,7 +71,7 @@ func bootstrapBrewBundle(root string, args []string) error {
 	fmt.Fprintf(os.Stderr, "Install missing formulae:\n  brew bundle install --file=%s\n\n", q)
 	fmt.Fprintf(os.Stderr, "Check without installing:\n  brew bundle check --file=%s\n", q)
 	fmt.Println(brewfile)
-	return nil
+	return runGoInstalls(root)
 }
 
 func buildBrewfile(formulas []string, only string) string {
@@ -96,6 +96,53 @@ func buildBrewfile(formulas []string, only string) string {
 
 func shellSingleQuote(s string) string {
 	return `'` + strings.ReplaceAll(s, `'`, `'\''`) + `'`
+}
+
+func goInstallPackages(root string) ([]string, error) {
+	seen := map[string]struct{}{}
+	var pkgs []string
+	for _, rel := range []string{"deps/toolbox.yaml", "deps/tools.yaml"} {
+		f, err := loadDepsFile(root, rel)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range f.GoInstall {
+			if _, ok := seen[p]; !ok {
+				seen[p] = struct{}{}
+				pkgs = append(pkgs, p)
+			}
+		}
+	}
+	return pkgs, nil
+}
+
+func runGoInstalls(root string) error {
+	pkgs, err := goInstallPackages(root)
+	if err != nil {
+		return err
+	}
+	if len(pkgs) == 0 {
+		return nil
+	}
+	goPath, err := exec.LookPath("go")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "bootstrap: go not found on PATH; skipping go_install deps:")
+		for _, p := range pkgs {
+			fmt.Fprintf(os.Stderr, "  go install %s\n", p)
+		}
+		return nil
+	}
+	fmt.Println("bootstrap: running go install for deps...")
+	for _, pkg := range pkgs {
+		fmt.Printf("  go install %s\n", pkg)
+		cmd := exec.Command(goPath, "install", pkg)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "bootstrap: go install %s failed: %v\n", pkg, err)
+		}
+	}
+	return nil
 }
 
 type linuxPM struct {
@@ -157,7 +204,7 @@ func bootstrapLinuxInstall(root string) error {
 		fmt.Println()
 		return bootstrapLinuxPrint(root)
 	}
-	return nil
+	return runGoInstalls(root)
 }
 
 func ensureRPMFusion() error {
@@ -244,6 +291,17 @@ func bootstrapLinuxPrint(root string) error {
 	}
 	if err := printFile("Optional usual tools", "deps/tools.yaml"); err != nil {
 		return err
+	}
+	goPkgs, err := goInstallPackages(root)
+	if err != nil {
+		return err
+	}
+	if len(goPkgs) > 0 {
+		fmt.Println("# Go tools (run after go is on PATH)")
+		for _, p := range goPkgs {
+			fmt.Printf("go install %s\n", p)
+		}
+		fmt.Println()
 	}
 	fmt.Println(strings.TrimSpace(`
 Notes:

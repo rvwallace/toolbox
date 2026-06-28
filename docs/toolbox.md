@@ -89,16 +89,17 @@ After bootstrap, run `nvim` once to let LazyVim download and install its plugins
 
 | File | Purpose |
 |------|---------|
-| `deps/toolbox.yaml` | Extra packages beyond core prereqs (e.g. `jq`, `fzf`). `brew:` drives **generated** macOS Brewfiles; `apt_packages`, `dnf_packages`, `pacman_packages` for Linux auto-install and paste lines. |
+| `deps/toolbox.yaml` | Extra packages beyond core prereqs (e.g. `jq`, `fzf`). `brew:` drives **generated** macOS Brewfiles; `apt_packages`, `dnf_packages`, `pacman_packages` for Linux auto-install and paste lines; `go_install` for tools only available via `go install`. |
 | `deps/tools.yaml` | Optional “usual tools” list (second macOS batch; extra Linux install block). Can be empty. |
 
 Each file supports these keys:
 
 ```yaml
-brew:           # Homebrew formula names (macOS)
-apt_packages:   # Debian / Ubuntu package names
-dnf_packages:   # Fedora package names
+brew:            # Homebrew formula names (macOS)
+apt_packages:    # Debian / Ubuntu package names
+dnf_packages:    # Fedora package names
 pacman_packages: # Arch Linux package names (used for both pacman and paru)
+go_install:      # Go module paths (e.g. github.com/foo/bar@latest) — run on all platforms
 ```
 
 ### Package name verification
@@ -111,6 +112,7 @@ Package names differ across distros and must be verified against the actual repo
 | `apt_packages` | Ubuntu 24.04 LTS — `apt-cache show <name>` or [packages.ubuntu.com](https://packages.ubuntu.com) |
 | `dnf_packages` | Fedora (current stable) — `dnf info <name>` or [packages.fedoraproject.org](https://packages.fedoraproject.org) |
 | `pacman_packages` | Arch (current) — `pacman -Si <name>` or [archlinux.org/packages](https://archlinux.org/packages) |
+| `go_install` | Use when the tool is not in any package manager repo. Requires `go` on PATH. Use the full module path with `@latest` or a pinned version. |
 
 Common differences to watch for:
 
@@ -212,9 +214,9 @@ This is intentionally different from a separate autoloaded `functions/` and `com
 ## Other `toolbox` commands
 
 - **`toolbox deps scan`** — Advisory: scans `scripts/**/*.sh` for `command -v` / `$(which …)` tokens; use to refresh `deps/toolbox.yaml` manually.
-- **`toolbox bootstrap linux-install`** — Detects the package manager, optionally sets up RPM Fusion on Fedora, and runs a batch install from `deps/*.yaml`. Falls back to `linux-print` on failure or unknown distro. Used by `bootstrap.sh` on Linux.
-- **`toolbox bootstrap linux-print`** — Print Linux hints with copy-paste `apt` and `dnf` install lines. Fallback used when no supported package manager is found or install fails.
-- **`toolbox bootstrap brew-bundle`** — Writes a **temporary** `Brewfile` from `brew:` keys in `deps/*.yaml` and prints a sample **`brew bundle install --file='…'`** command (nothing committed under `deps/`). Flags: **`--only=toolbox`**, **`--only=tools`**, or **`--only=all`** (default `all`); **`--path-only`** prints just the Brewfile path on stdout for scripts. `bootstrap.sh` uses `--only=toolbox` and `--only=tools` in two steps.
+- **`toolbox bootstrap linux-install`** — Detects the package manager, optionally sets up RPM Fusion on Fedora, runs a batch install from `deps/*.yaml`, then runs `go install` for any `go_install` entries. Falls back to `linux-print` on failure or unknown distro. Used by `bootstrap.sh` on Linux.
+- **`toolbox bootstrap linux-print`** — Print Linux hints with copy-paste `apt` and `dnf` install lines, plus `go install` lines for any `go_install` entries. Fallback used when no supported package manager is found or install fails.
+- **`toolbox bootstrap brew-bundle`** — Writes a **temporary** `Brewfile` from `brew:` keys in `deps/*.yaml`, prints a sample **`brew bundle install --file='…'`** command (nothing committed under `deps/`), then runs `go install` for any `go_install` entries. Flags: **`--only=toolbox`**, **`--only=tools`**, or **`--only=all`** (default `all`); **`--path-only`** prints just the Brewfile path on stdout for scripts. `bootstrap.sh` uses `--only=toolbox` and `--only=tools` in two steps.
 
 ## Environment
 

@@ -3,25 +3,22 @@
 #
 # bash: Homebrew only — macOS ships an old bash; Linux uses the distro /usr/bin/bash.
 # ffmpeg: includes ffprobe on both Homebrew and typical apt/dnf packages (no separate ffprobe line).
-
 brew:
   - bash
   - ffmpeg
-  - figurine
   - fzf
   - jq
-
 apt_packages:
   - ffmpeg
   - fzf
   - jq
-
 dnf_packages:
   - ffmpeg
   - fzf
   - jq
-
 pacman_packages:
   - ffmpeg
   - fzf
   - jq
+go_install:
+  - github.com/arsham/figurine/v2@latest

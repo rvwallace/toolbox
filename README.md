@@ -69,6 +69,7 @@ netinfo
 | Command | Description |
 |---------|-------------|
 | `brew-search` | Homebrew search helper |
+| `merge-zsh-history` | Merge zsh history backups into the active history file, deduplicating by command |
 | `nerdfont-install` | Nerd Font installer |
 | `op-clip` | 1Password clipboard helper |
 | `tmux-exec` | Run commands in tmux panes |
