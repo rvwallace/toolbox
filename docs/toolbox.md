@@ -85,7 +85,7 @@ Steps performed:
    - **Cancel:** Leave the existing installation unchanged and skip NvChad setup.
 2. `git clone https://github.com/NvChad/starter ~/.config/nvim`
 3. `rm -rf ~/.config/nvim/.git`
-4. Copy the defaults from `contrib/nvchad/` into the new config. These enable Noice, load Nvdash on startup, and reopen Nvdash when the final buffer is deleted.
+4. Copy the versioned configuration from `contrib/nvchad/` into the new config. This mirrors the maintained `~/.config/nvim` setup, including its pinned plugin lockfile, theme and UI settings, LSP and formatter configuration, Tree-sitter parsers, plugins, mappings, options, and autocmds. Nvdash loads on startup and reopens when the final file buffer is deleted.
 5. Run `nvim --headless "+Lazy! sync" "+MasonInstallAll" "+TSInstallAll" +qa` to install plugins, Mason tools, and Tree-sitter parsers.
 
 After bootstrap completes, NvChad is ready to launch with `nvim`.
