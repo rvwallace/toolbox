@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Chef Interactive shell module
 
-toolbox_require_commands chef knife || return 0
+toolbox_require_commands knife || return 0
 
 # --- Functions ---
 chef.env() {
@@ -84,13 +84,13 @@ chef.env() {
       fi
       selection=$(printf '%s\n' "$configs" |
         fzf --height 40% \
-            --border \
-            --preview="$preview_cmd $chef_dir/{}/config.yml" \
-            --preview-window=right:70% \
-            --prompt='Select Chef config > ' \
-            --query="$initial_query" \
-            --select-1 \
-            --exit-0)
+          --border \
+          --preview="$preview_cmd $chef_dir/{}/config.yml" \
+          --preview-window=right:70% \
+          --prompt='Select Chef config > ' \
+          --query="$initial_query" \
+          --select-1 \
+          --exit-0)
     else
       selection=$(_chef_env_select_with_menu "$configs")
     fi
@@ -108,18 +108,18 @@ chef.env() {
   [[ -n "$1" ]] && shift
 
   case "$command" in
-    set) _chef_env_set "$@" ;;
-    clear) _chef_env_clear ;;
-    show) _chef_env_show ;;
-    list) _chef_env_list ;;
-    "")
-      echo "Usage: chef.env <set|clear|show|list> [name]" >&2
-      return 1
-      ;;
-    *)
-      echo "Unknown command: $command" >&2
-      echo "Usage: chef.env <set|clear|show|list> [name]" >&2
-      return 1
-      ;;
+  set) _chef_env_set "$@" ;;
+  clear) _chef_env_clear ;;
+  show) _chef_env_show ;;
+  list) _chef_env_list ;;
+  "")
+    echo "Usage: chef.env <set|clear|show|list> [name]" >&2
+    return 1
+    ;;
+  *)
+    echo "Unknown command: $command" >&2
+    echo "Usage: chef.env <set|clear|show|list> [name]" >&2
+    return 1
+    ;;
   esac
 }
