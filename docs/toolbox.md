@@ -73,17 +73,22 @@ Both macOS and Linux bootstrap paths run `uv_tool_installs` after package instal
 
 - `rich-cli`
 
-### LazyVim setup
+### NvChad setup
 
-Both macOS and Linux bootstrap paths run `setup_lazyvim` after `uv_tool_installs`, but only if `nvim` is on PATH. If `~/.config/nvim` already exists the user is prompted `[y/N]` before proceeding.
+Both macOS and Linux bootstrap paths run `setup_nvchad` after `uv_tool_installs`, but only if `nvim` is on PATH. If `~/.config/nvim` already exists, the user can back it up, delete it without a backup, or cancel the NvChad setup.
 
 Steps performed:
 
-1. Back up `~/.config/nvim` → `~/.config/nvim.bak` (and `~/.local/share/nvim`, `~/.local/state/nvim`, `~/.cache/nvim` if present).
-2. `git clone https://github.com/LazyVim/starter ~/.config/nvim`
+1. Handle an existing Neovim installation:
+   - **Back up:** Move `~/.config/nvim` → `~/.config/nvim.bak`, along with the matching data, state, and cache directories. If backup paths already exist, list them and ask before permanently removing them.
+   - **Delete without backup:** Display a warning and require confirmation before permanently removing the current config, data, state, and cache. If old backup paths exist, list them and separately ask whether to remove or preserve them.
+   - **Cancel:** Leave the existing installation unchanged and skip NvChad setup.
+2. `git clone https://github.com/NvChad/starter ~/.config/nvim`
 3. `rm -rf ~/.config/nvim/.git`
+4. Copy the defaults from `contrib/nvchad/` into the new config. These enable Noice, load Nvdash on startup, and reopen Nvdash when the final buffer is deleted.
+5. Run `nvim --headless "+Lazy! sync" "+MasonInstallAll" "+TSInstallAll" +qa` to install plugins, Mason tools, and Tree-sitter parsers.
 
-After bootstrap, run `nvim` once to let LazyVim download and install its plugins. Run `:LazyHealth` inside Neovim to verify everything loaded correctly.
+After bootstrap completes, NvChad is ready to launch with `nvim`.
 
 ## Dependency files (`deps/`)
 
