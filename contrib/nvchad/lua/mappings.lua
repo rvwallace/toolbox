@@ -44,9 +44,6 @@ map("n", "<leader>gg", "<cmd>Git<cr>",          { desc = "Git status (fugitive)"
 map("n", "<leader>gD", "<cmd>Gdiffsplit<cr>",   { desc = "Git diff split" })
 
 -- ── Yazi ───────────────────────────────────────────────────────────────────
-map("n", "<leader>y", function()
-  require("yazi").toggle()
-end, { desc = "Yazi (resume)" })
 map("n", "<leader>yy", function()
   require("yazi").toggle()
 end, { desc = "Yazi (resume)" })
@@ -73,3 +70,8 @@ map("n", "<leader>yc", function()
   vim.fn.setreg("+", val)
   vim.notify(val, vim.log.levels.INFO)
 end, { desc = "Yank cwd" })
+map("n", "<leader>ya", function()
+  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  vim.fn.setreg("+", lines, "l")
+  vim.notify("Yanked entire file", vim.log.levels.INFO)
+end, { desc = "Yank entire file" })
