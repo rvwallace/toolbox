@@ -81,7 +81,7 @@ netinfo
 |---------|-------------|
 | `ssh-remove-host` | Edit `known_hosts` |
 | `ssh-sc` | SSH key and host helper (interactive) |
-| `tssh` | Open SSH connections in a dedicated local tmux session |
+| `tssh` | Open SSH connections in a dedicated local tmux session; see [`docs/tssh.md`](docs/tssh.md) |
 
 ### Productivity
 
