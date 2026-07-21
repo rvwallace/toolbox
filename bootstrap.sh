@@ -155,10 +155,8 @@ setup_nvchad() {
 			*) echo "bootstrap: skipped NvChad setup."; return 0 ;;
 		esac
 	fi
-	echo "bootstrap: cloning NvChad starter..."
-	git clone https://github.com/NvChad/starter "$HOME/.config/nvim"
-	rm -rf "$HOME/.config/nvim/.git"
-	cp -R "$ROOT/contrib/nvchad/." "$HOME/.config/nvim/"
+	echo "bootstrap: cloning Neovim config..."
+	git clone https://github.com/rvwallace/nvim-config.git "$HOME/.config/nvim"
 	echo "bootstrap: installing NvChad plugins, Mason tools, and Tree-sitter parsers..."
 	nvim --headless "+Lazy! sync" "+MasonInstallAll" "+TSInstallAll" +qa
 	echo "bootstrap: NvChad installed."
