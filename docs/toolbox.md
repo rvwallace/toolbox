@@ -83,10 +83,8 @@ Steps performed:
    - **Back up:** Move `~/.config/nvim` → `~/.config/nvim.bak`, along with the matching data, state, and cache directories. If backup paths already exist, list them and ask before permanently removing them.
    - **Delete without backup:** Display a warning and require confirmation before permanently removing the current config, data, state, and cache. If old backup paths exist, list them and separately ask whether to remove or preserve them.
    - **Cancel:** Leave the existing installation unchanged and skip NvChad setup.
-2. `git clone https://github.com/NvChad/starter ~/.config/nvim`
-3. `rm -rf ~/.config/nvim/.git`
-4. Copy the versioned configuration from `contrib/nvchad/` into the new config. This mirrors the maintained `~/.config/nvim` setup, including its pinned plugin lockfile, theme and UI settings, LSP and formatter configuration, Tree-sitter parsers, plugins, mappings, options, and autocmds. Nvdash loads on startup and reopens when the final file buffer is deleted.
-5. Run `nvim --headless "+Lazy! sync" "+MasonInstallAll" "+TSInstallAll" +qa` to install plugins, Mason tools, and Tree-sitter parsers.
+2. `git clone https://github.com/rvwallace/nvim-config.git ~/.config/nvim`. The standalone repository owns the complete configuration and remains a Git working tree for direct updates.
+3. Run `nvim --headless "+Lazy! sync" "+MasonInstallAll" "+TSInstallAll" +qa` to install plugins, Mason tools, and Tree-sitter parsers.
 
 After bootstrap completes, NvChad is ready to launch with `nvim`.
 
