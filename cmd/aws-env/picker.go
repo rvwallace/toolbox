@@ -44,6 +44,7 @@ type pickerModel struct {
 	filtered []string
 	cursor   int
 	query    string
+	showHelp bool
 
 	Selected string
 	Aborted  bool
@@ -99,6 +100,13 @@ func (m pickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		key := msg.String()
 
+		if m.showHelp {
+			if key == "?" || key == "esc" || key == "enter" {
+				m.showHelp = false
+			}
+			return m, nil
+		}
+
 		if key == "ctrl+c" || key == "esc" {
 			m.Aborted = true
 			return m, tea.Quit
@@ -109,6 +117,8 @@ func (m pickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch key {
+		case "?":
+			m.showHelp = true
 		case "enter":
 			if len(m.filtered) > 0 {
 				m.Selected = m.filtered[m.cursor]
@@ -116,13 +126,17 @@ func (m pickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 		case "up":
-			if m.cursor > 0 {
-				m.cursor--
-			}
+			m.moveCursor(-1)
 		case "down":
-			if m.cursor < len(m.filtered)-1 {
-				m.cursor++
-			}
+			m.moveCursor(1)
+		case "home", "ctrl+a":
+			m.cursor = 0
+		case "end", "ctrl+e":
+			m.cursor = max(0, len(m.filtered)-1)
+		case "pgup":
+			m.moveCursor(-m.listHeight())
+		case "pgdown":
+			m.moveCursor(m.listHeight())
 		case "backspace":
 			if len(m.query) > 0 {
 				runes := []rune(m.query)
@@ -165,6 +179,23 @@ func (m pickerModel) render() string {
 	var b strings.Builder
 	b.WriteString("  " + titleStyle.Render(m.title) + "\n\n")
 
+	if m.width < 40 || m.height < 10 {
+		return titleStyle.Render(m.title) + "\n\nTerminal too small; resize to at least 40×10.\n"
+	}
+
+	if m.showHelp {
+		b.WriteString("  " + titleStyle.Render("Keyboard help") + "\n\n")
+		b.WriteString("  ↑/↓               move one item\n")
+		b.WriteString("  PgUp/PgDn         move one page\n")
+		b.WriteString("  Home/End          first/last item\n")
+		b.WriteString("  type, Backspace   edit filter\n")
+		b.WriteString("  Ctrl-u            clear filter\n")
+		b.WriteString("  Enter             select item\n")
+		b.WriteString("  Esc, Ctrl-c       cancel\n\n")
+		b.WriteString("  " + helpStyle.Render("Press ?, esc, or enter to close help.") + "\n")
+		return b.String()
+	}
+
 	switch m.state {
 	case pickerLoading:
 		fmt.Fprintf(&b, "  %s Loading...\n", m.spinner.View())
@@ -183,7 +214,7 @@ func (m pickerModel) render() string {
 		}
 
 		// List
-		listHeight := max(5, m.height-9)
+		listHeight := m.listHeight()
 		start := 0
 		if m.cursor >= listHeight {
 			start = m.cursor - listHeight + 1
@@ -204,10 +235,30 @@ func (m pickerModel) render() string {
 		}
 
 		b.WriteString("\n")
-		fmt.Fprintf(&b, "  %s\n", helpStyle.Render(fmt.Sprintf("↑/↓ navigate • enter select • esc quit • %d/%d", len(m.filtered), len(m.items))))
+		position := 0
+		if len(m.filtered) > 0 {
+			position = m.cursor + 1
+		}
+		footer := fmt.Sprintf("↑/↓ move  enter select  ? help  esc cancel  •  %d/%d shown  •  %d/%d", len(m.filtered), len(m.items), position, len(m.filtered))
+		if m.width < 72 {
+			footer = fmt.Sprintf("↑/↓ move  enter select  ? help  •  %d/%d", position, len(m.filtered))
+		}
+		fmt.Fprintf(&b, "  %s\n", helpStyle.Render(footer))
 	}
 
 	return b.String()
+}
+
+func (m pickerModel) listHeight() int {
+	return max(1, m.height-9)
+}
+
+func (m *pickerModel) moveCursor(delta int) {
+	if len(m.filtered) == 0 {
+		m.cursor = 0
+		return
+	}
+	m.cursor = min(max(0, m.cursor+delta), len(m.filtered)-1)
 }
 
 func (m *pickerModel) applyFilter() {
@@ -243,4 +294,3 @@ func truncate(s string, width int) string {
 	}
 	return lipgloss.NewStyle().MaxWidth(width).Render(s)
 }
-
