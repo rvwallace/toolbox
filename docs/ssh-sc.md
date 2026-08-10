@@ -140,10 +140,6 @@ Before removal, `ssh-sc` creates a timestamped backup next to `known_hosts`. It
 keeps the five newest backups. If removal fails, use the backup path from the
 command output to restore the file.
 
-The standalone `ssh-remove-host` command remains available. It supplies a
-focused `known_hosts` workflow. Use `ssh-sc remove-known-host` when you want the
-same task in the combined SSH helper.
-
 ## Repair SSH permissions
 
 Preview the required changes:
