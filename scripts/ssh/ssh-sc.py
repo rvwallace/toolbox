@@ -4,7 +4,6 @@
 # dependencies = [
 #     "rich",
 #     "typer",
-#     "InquirerPy",
 # ]
 # bin-name = "ssh-sc"
 # ///
@@ -14,26 +13,48 @@
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
+import stat
 import subprocess
+import tempfile
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import typer
 from rich.console import Console
-
-try:
-    from InquirerPy import inquirer
-    from InquirerPy.base.control import Choice
-except ImportError:
-    print("InquirerPy is not installed. Please run 'uv pip sync' in your project root.")
-    # Exit with a non-zero code to indicate an error
-    exit(1)
+from rich.panel import Panel
+from rich.table import Table
 
 app = typer.Typer(help="SSH helper script.")
 console = Console()
-FUZZY_KEYBINDINGS = {"interrupt": [{"key": "c-c"}, {"key": "escape"}]}
+KNOWN_HOSTS_BACKUPS_TO_KEEP = 5
+
+
+@dataclass(frozen=True)
+class PrivateKey:
+    """Metadata for one private key file."""
+
+    path: Path
+    bits: str
+    fingerprint: str
+    comment: str
+    key_type: str
+    loaded: bool
+
+
+@dataclass(frozen=True)
+class AgentIdentity:
+    """Metadata for one identity loaded in ssh-agent."""
+
+    bits: str
+    fingerprint: str
+    comment: str
+    key_type: str
+    public_key: str
+    local_path: Optional[Path]
 
 
 def check_for_command(command: str):
@@ -43,15 +64,65 @@ def check_for_command(command: str):
         raise typer.Exit(1)
 
 
-def _get_private_key_files() -> list[str]:
-    """Return a list of private key files in the .ssh directory."""
+def _copy_to_clipboard(text: str) -> Optional[str]:
+    """Copy text with the first available clipboard command."""
+    clipboard_commands = [
+        ("pbcopy", ["pbcopy"]),
+        ("wl-copy", ["wl-copy"]),
+        ("xclip", ["xclip", "-selection", "clipboard"]),
+    ]
+    for name, command in clipboard_commands:
+        if not shutil.which(name):
+            continue
+        copy_process = subprocess.run(
+            command,
+            input=text,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if copy_process.returncode == 0:
+            return name
+    return None
+
+
+def _parse_keygen_listing(line: str) -> Optional[tuple[str, str, str, str]]:
+    """Parse one ssh-keygen or ssh-add fingerprint line."""
+    parts = line.split()
+    if len(parts) < 3:
+        return None
+    key_type = parts[-1].removeprefix("(").removesuffix(")")
+    return parts[0], parts[1], " ".join(parts[2:-1]), key_type
+
+
+def _loaded_fingerprints() -> set[str]:
+    """Return agent fingerprints, or an empty set when no agent is available."""
+    probe = subprocess.run(
+        ["ssh-add", "-l"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if probe.returncode not in {0, 1}:
+        return set()
+    fingerprints = set()
+    for line in probe.stdout.splitlines():
+        parsed = _parse_keygen_listing(line)
+        if parsed:
+            fingerprints.add(parsed[1])
+    return fingerprints
+
+
+def _get_private_keys() -> list[PrivateKey]:
+    """Return metadata for private key files in the .ssh directory."""
     ssh_path = Path.home() / ".ssh"
-    key_files: list[str] = []
+    keys: list[PrivateKey] = []
     if not ssh_path.is_dir():
         return []
 
-    for path in ssh_path.iterdir():
-        if not path.is_file():
+    loaded_fingerprints = _loaded_fingerprints()
+    for path in sorted(ssh_path.iterdir(), key=lambda item: item.name.casefold()):
+        if path.is_symlink() or not path.is_file():
             continue
         if path.suffix in {".pub", ".bak"}:
             continue
@@ -66,52 +137,212 @@ def _get_private_key_files() -> list[str]:
             text=True,
             check=False,
         )
-        if probe.returncode == 0:
-            key_files.append(str(path))
-    return key_files
+        if probe.returncode != 0 or not probe.stdout.strip():
+            continue
+        parsed = _parse_keygen_listing(probe.stdout.splitlines()[0])
+        if not parsed:
+            continue
+        bits, fingerprint, comment, key_type = parsed
+        keys.append(
+            PrivateKey(
+                path=path,
+                bits=bits,
+                fingerprint=fingerprint,
+                comment=comment,
+                key_type=key_type,
+                loaded=fingerprint in loaded_fingerprints,
+            )
+        )
+    return keys
 
 
-def _select_key(query: Optional[str]) -> Optional[str]:
-    """Uses a fuzzy prompt to select an SSH key, returns the path."""
-    check_for_command("ssh-keygen")
-    key_files = _get_private_key_files()
-    if query:
-        lowered_query = query.lower()
-        key_files = [k for k in key_files if lowered_query in k.lower()]
-    if not key_files:
-        console.print("[yellow]No private key files found.[/yellow]")
+def _key_preview(key: PrivateKey) -> str:
+    """Return a safe preview that never includes private key material."""
+    status = "loaded in ssh-agent" if key.loaded else "not loaded"
+    return "\n".join(
+        [
+            f"File:        {key.path}",
+            f"Type:        {key.key_type}",
+            f"Bits:        {key.bits}",
+            f"Fingerprint: {key.fingerprint}",
+            f"Comment:     {key.comment or '(none)'}",
+            f"Agent:       {status}",
+        ]
+    )
+
+
+def _fzf_select(
+    items: list[tuple[str, str, str]],
+    *,
+    prompt: str,
+    header: str,
+    query: Optional[str] = None,
+    multi: bool = False,
+) -> Optional[list[str]]:
+    """Select values in a split-pane fzf interface."""
+    check_for_command("fzf")
+    with tempfile.TemporaryDirectory(prefix="ssh-sc-preview-") as preview_dir_name:
+        preview_dir = Path(preview_dir_name)
+        values: dict[str, str] = {}
+        choice_lines = []
+        for index, (value, display, preview) in enumerate(items):
+            item_id = str(index)
+            values[item_id] = value
+            (preview_dir / item_id).write_text(preview)
+            choice_lines.append(f"{item_id}\t{display}")
+
+        command = [
+            "fzf",
+            "--height=80%",
+            "--layout=reverse",
+            "--border=rounded",
+            "--delimiter=\\t",
+            "--with-nth=2",
+            f"--prompt={prompt}",
+            f"--header={header}",
+            "--preview-window=right:55%:wrap:border-left",
+            f"--preview=cat {shlex.quote(str(preview_dir))}/{{1}}",
+        ]
+        if query:
+            command.append(f"--query={query}")
+        if multi:
+            command.append("--multi")
+
+        selection_process = subprocess.run(
+            command,
+            input="\n".join(choice_lines),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    if selection_process.returncode in {1, 130}:
         return None
-
-    choices = [
-        Choice(value=path, name=Path(path).name)
-        for path in key_files
+    if selection_process.returncode != 0:
+        console.print("[red]fzf could not open the selector.[/red]")
+        if selection_process.stderr.strip():
+            console.print(f"[dim]{selection_process.stderr.strip()}[/dim]")
+        raise typer.Exit(1)
+    return [
+        values[line.split("\t", maxsplit=1)[0]]
+        for line in selection_process.stdout.splitlines()
+        if line
     ]
 
-    try:
-        selected_key = inquirer.fuzzy(
-            message="Select an SSH key:",
-            choices=choices,
-            default=query or "",
-            long_instruction="CTRL-C or ESC to quit",
-            border=True,
-            height="40%",
-            keybindings=FUZZY_KEYBINDINGS,
-        ).execute()
-        return selected_key
 
-    except KeyboardInterrupt:
+def _select_private_key(
+    keys: list[PrivateKey], query: Optional[str], *, prompt: str
+) -> Optional[PrivateKey]:
+    """Select one private key with metadata visible in the preview pane."""
+    selections = _fzf_select(
+        [
+            (
+                str(key.path),
+                f"{key.path.name}  [{key.key_type}]  "
+                f"{'loaded' if key.loaded else 'not loaded'}",
+                _key_preview(key),
+            )
+            for key in keys
+        ],
+        prompt=prompt,
+        header="↑/↓: move  Enter: select  ESC: cancel",
+        query=query,
+    )
+    if not selections:
         return None
-    except Exception as e:
-        console.print(f"[red]An unexpected error occurred: {e}[/red]")
+    selected_path = Path(selections[0])
+    return next(key for key in keys if key.path == selected_path)
+
+
+def _require_agent() -> None:
+    """Stop with current-shell setup guidance when ssh-agent is unavailable."""
+    agent_probe = subprocess.run(
+        ["ssh-add", "-l"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if agent_probe.returncode in {0, 1}:
+        return
+    start_agent_command = 'eval "$(ssh-agent -s)"'
+    console.print(
+        Panel(
+            f"[bold cyan]{start_agent_command}[/bold cyan]",
+            title="[bold yellow]ssh-agent is not available[/bold yellow]",
+            subtitle="Run this in your current bash or zsh shell",
+            border_style="yellow",
+        )
+    )
+    if typer.confirm("Copy this command to the clipboard?", default=True):
+        clipboard_tool = _copy_to_clipboard(start_agent_command)
+        if clipboard_tool:
+            console.print(f"[green]✓[/green] Copied with [cyan]{clipboard_tool}[/cyan].")
+        else:
+            console.print(
+                "[yellow]Could not copy the command. No supported clipboard "
+                "tool was available.[/yellow]"
+            )
+    console.print("Start the agent, then run the ssh-sc command again.")
+    raise typer.Exit(1)
+
+
+def _get_agent_identities(private_keys: list[PrivateKey]) -> list[AgentIdentity]:
+    """Return identities from ssh-agent, including keys absent from disk."""
+    _require_agent()
+    public_keys_process = subprocess.run(
+        ["ssh-add", "-L"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if public_keys_process.returncode == 1:
+        return []
+    if public_keys_process.returncode != 0:
+        console.print("[red]Could not read identities from ssh-agent.[/red]")
         raise typer.Exit(1)
 
+    paths_by_fingerprint = {key.fingerprint: key.path for key in private_keys}
+    identities = []
+    for public_key in public_keys_process.stdout.splitlines():
+        fingerprint_process = subprocess.run(
+            ["ssh-keygen", "-l", "-f", "-"],
+            input=f"{public_key}\n",
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if fingerprint_process.returncode != 0:
+            continue
+        parsed = _parse_keygen_listing(fingerprint_process.stdout.strip())
+        if not parsed:
+            continue
+        bits, fingerprint, comment, key_type = parsed
+        identities.append(
+            AgentIdentity(
+                bits=bits,
+                fingerprint=fingerprint,
+                comment=comment,
+                key_type=key_type,
+                public_key=public_key,
+                local_path=paths_by_fingerprint.get(fingerprint),
+            )
+        )
+    return identities
 
-def _extract_fingerprint(line: str) -> Optional[str]:
-    """Return the fingerprint field from ssh-add or ssh-keygen output."""
-    parts = line.split()
-    if len(parts) < 2:
-        return None
-    return parts[1]
+
+def _identity_preview(identity: AgentIdentity) -> str:
+    """Return agent identity details for an fzf preview pane."""
+    return "\n".join(
+        [
+            f"File:        {identity.local_path or '(not found locally)'}",
+            f"Type:        {identity.key_type}",
+            f"Bits:        {identity.bits}",
+            f"Fingerprint: {identity.fingerprint}",
+            f"Comment:     {identity.comment or '(none)'}",
+            "",
+            "Public key:",
+            identity.public_key,
+        ]
+    )
 
 
 @app.callback()
@@ -124,24 +355,29 @@ def main():
 def list_keys(
     query: Optional[str] = typer.Argument(None, help="Optional initial query filter"),
 ) -> None:
-    """List and select SSH private keys."""
-    selected_key = _select_key(query)
+    """Browse SSH private keys and inspect their metadata."""
+    check_for_command("ssh-add")
+    check_for_command("ssh-keygen")
+    keys = _get_private_keys()
+    if not keys:
+        console.print("[yellow]No private key files found.[/yellow]")
+        raise typer.Exit()
 
-    if selected_key:
-        console.print(f"Selected key: {selected_key}")
-        fingerprint_process = subprocess.run(
-            ["ssh-keygen", "-l", "-f", selected_key],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if fingerprint_process.returncode == 0:
-            console.print(f"Fingerprint: {fingerprint_process.stdout.strip()}")
-        else:
-            console.print("[yellow]Could not get key fingerprint.[/yellow]")
-    else:
-        console.print("No key selected.")
+    selected_key = _select_private_key(keys, query, prompt="Inspect key > ")
+    if not selected_key:
+        console.print("No changes made.")
+        raise typer.Exit()
 
+    summary = Table(show_header=False, box=None, pad_edge=False)
+    summary.add_column("Field", style="bold")
+    summary.add_column("Value")
+    summary.add_row("File", str(selected_key.path))
+    summary.add_row("Type", selected_key.key_type)
+    summary.add_row("Bits", selected_key.bits)
+    summary.add_row("Fingerprint", selected_key.fingerprint)
+    summary.add_row("Comment", selected_key.comment or "(none)")
+    summary.add_row("Agent", "loaded" if selected_key.loaded else "not loaded")
+    console.print(Panel(summary, title="[bold]SSH key[/bold]", border_style="cyan"))
 
 @app.command("add-key")
 def add_key(
@@ -149,31 +385,32 @@ def add_key(
 ) -> None:
     """Add an SSH key to the ssh-agent."""
     check_for_command("ssh-add")
+    check_for_command("ssh-keygen")
+    _require_agent()
+    keys = _get_private_keys()
+    if not keys:
+        console.print("[yellow]No private key files found.[/yellow]")
+        raise typer.Exit()
 
-    if "SSH_AUTH_SOCK" not in os.environ:
-        console.print("[yellow]SSH_AUTH_SOCK is not set. Starting ssh-agent...[/yellow]")
-        try:
-            agent_output = subprocess.check_output(["ssh-agent", "-s"], text=True)
-            for line in agent_output.splitlines():
-                if "SSH_AUTH_SOCK" in line or "SSH_AGENT_PID" in line:
-                    key, value = line.rstrip(";").split(";")[0].split("=")
-                    os.environ[key] = value
-            console.print("[green]Started ssh-agent.[/green]")
-        except Exception:
-            console.print("[red]Failed to start ssh-agent automatically. Please start it manually.[/red]")
-            raise typer.Exit(1)
+    selected_key = _select_private_key(keys, query, prompt="Add key > ")
+    if not selected_key:
+        console.print("No changes made.")
+        raise typer.Exit()
+    if selected_key.loaded:
+        console.print(
+            f"[yellow]{selected_key.path.name} is already loaded in ssh-agent.[/yellow]"
+        )
+        raise typer.Exit()
 
-    selected_key = _select_key(query)
-
-    if selected_key:
-        try:
-            subprocess.run(["ssh-add", selected_key], check=True)
-            console.print(f"Key added: {selected_key}")
-        except subprocess.CalledProcessError:
-            console.print(f"[red]Failed to add key: {selected_key}[/red]")
-            raise typer.Exit(1)
-    else:
-        console.print("No key selected.")
+    add_process = subprocess.run(
+        ["ssh-add", str(selected_key.path)],
+        check=False,
+    )
+    if add_process.returncode != 0:
+        console.print(f"[red]Could not add key:[/] {selected_key.path}")
+        raise typer.Exit(1)
+    console.print(f"[green]✓[/green] Added {selected_key.path}")
+    console.print(f"[dim]{selected_key.fingerprint}[/dim]")
 
 
 @app.command("unload-key")
@@ -182,104 +419,87 @@ def unload_key():
     check_for_command("ssh-add")
     check_for_command("ssh-keygen")
 
-    try:
-        # Get loaded keys
-        loaded_keys_process = subprocess.run(
-            ["ssh-add", "-l"], capture_output=True, text=True, check=True
-        )
-        loaded_keys_output = loaded_keys_process.stdout.strip()
-        if not loaded_keys_output:
-            console.print("No keys loaded in ssh-agent.")
-            raise typer.Exit()
-        
-        loaded_keys = loaded_keys_output.split("\n")
-
-        # Map fingerprints to local key file paths for display
-        private_keys = _get_private_key_files()
-        fingerprint_to_file: dict[str, str] = {}
-        for key_file in private_keys:
-            if not key_file:
-                continue
-            fingerprint_process = subprocess.run(
-                ["ssh-keygen", "-l", "-f", key_file],
-                capture_output=True, text=True, check=False,
-            )
-            if fingerprint_process.returncode == 0:
-                keygen_output = fingerprint_process.stdout.strip().splitlines()[0]
-                keygen_fingerprint = _extract_fingerprint(keygen_output)
-                if keygen_fingerprint:
-                    fingerprint_to_file[keygen_fingerprint] = key_file
-
-        key_choices = []
-        for line in loaded_keys:
-            fp = _extract_fingerprint(line)
-            key_file = fingerprint_to_file.get(fp, "unknown file")
-            display = f"{line} [{key_file}]"
-            key_choices.append(Choice(value=line, name=display))
-
-        # Use fuzzy prompt to select a key
-        selected_key_line = inquirer.fuzzy(
-            message="Select a key to remove:",
-            choices=key_choices,
-            long_instruction="CTRL-C or ESC to quit",
-            border=True,
-            height="40%",
-            keybindings=FUZZY_KEYBINDINGS,
-        ).execute()
-
-        if not selected_key_line:
-            console.print("No key selected.")
-            raise typer.Exit()
-
-        selected_fingerprint = _extract_fingerprint(selected_key_line)
-        if not selected_fingerprint:
-            console.print("[red]Could not parse fingerprint from selected key.[/red]")
-            raise typer.Exit(1)
-
-        # Find the key file
-        private_keys = _get_private_key_files()
-        key_file_to_remove = None
-        for key_file in private_keys:
-            if not key_file:
-                continue
-            fingerprint_process = subprocess.run(
-                ["ssh-keygen", "-l", "-f", key_file],
-                capture_output=True, text=True, check=False,
-            )
-            if fingerprint_process.returncode == 0:
-                keygen_output = fingerprint_process.stdout.strip().splitlines()[0]
-                keygen_fingerprint = _extract_fingerprint(keygen_output)
-                if keygen_fingerprint and keygen_fingerprint == selected_fingerprint:
-                    key_file_to_remove = key_file
-                    break
-        
-        if key_file_to_remove:
-            subprocess.run(["ssh-add", "-d", key_file_to_remove], check=True)
-            console.print(f"Key removed: {key_file_to_remove}")
-        else:
-            console.print("[red]Could not find matching key file to remove.[/red]")
-
-    except KeyboardInterrupt:
-        console.print("No key selected.")
+    private_keys = _get_private_keys()
+    identities = _get_agent_identities(private_keys)
+    if not identities:
+        console.print("No keys are loaded in ssh-agent.")
         raise typer.Exit()
-    except subprocess.CalledProcessError as e:
-        console.print(f"[red]Error interacting with ssh-agent: {e}[/red]")
+
+    selections = _fzf_select(
+        [
+            (
+                identity.fingerprint,
+                f"{identity.comment or '(no comment)'}  [{identity.key_type}]",
+                _identity_preview(identity),
+            )
+            for identity in identities
+        ],
+        prompt="Unload key > ",
+        header="↑/↓: move  Enter: review  ESC: cancel",
+    )
+    if not selections:
+        console.print("No changes made.")
+        raise typer.Exit()
+    identity = next(item for item in identities if item.fingerprint == selections[0])
+    console.print(Panel(_identity_preview(identity), title="[bold]Unload key[/bold]"))
+    if not typer.confirm("Remove this key from ssh-agent?", default=False):
+        console.print("No changes made.")
+        raise typer.Exit()
+
+    with tempfile.NamedTemporaryFile(mode="w", prefix="ssh-sc-public-key-") as key_file:
+        key_file.write(f"{identity.public_key}\n")
+        key_file.flush()
+        remove_process = subprocess.run(
+            ["ssh-add", "-d", key_file.name],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    if remove_process.returncode != 0:
+        console.print("[red]Could not remove the selected key from ssh-agent.[/red]")
+        if remove_process.stderr.strip():
+            console.print(f"[dim]{remove_process.stderr.strip()}[/dim]")
         raise typer.Exit(1)
-    except Exception as e:
-        console.print(f"[red]An unexpected error occurred: {e}[/red]")
-        raise typer.Exit(1)
+    console.print(f"[green]✓[/green] Removed {identity.comment or identity.fingerprint}")
 
 
 @app.command("unload-keys")
 def unload_keys():
     """Remove all keys from ssh-agent."""
     check_for_command("ssh-add")
-    try:
-        subprocess.run(["ssh-add", "-D"], check=True)
-        console.print("All keys removed from ssh-agent.")
-    except subprocess.CalledProcessError:
-        console.print("[red]Failed to unload keys.[/red]")
+    check_for_command("ssh-keygen")
+    identities = _get_agent_identities(_get_private_keys())
+    if not identities:
+        console.print("No keys are loaded in ssh-agent.")
+        raise typer.Exit()
+
+    table = Table("Comment", "Type", "Fingerprint", "Local file")
+    for identity in identities:
+        table.add_row(
+            identity.comment or "(none)",
+            identity.key_type,
+            identity.fingerprint,
+            str(identity.local_path or "(not found)"),
+        )
+    console.print(Panel(table, title="[bold yellow]Keys to unload[/bold yellow]"))
+    if not typer.confirm(
+        f"Remove all {len(identities)} keys from ssh-agent?", default=False
+    ):
+        console.print("No changes made.")
+        raise typer.Exit()
+
+    remove_process = subprocess.run(
+        ["ssh-add", "-D"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if remove_process.returncode != 0:
+        console.print("[red]Could not unload all keys.[/red]")
+        if remove_process.stderr.strip():
+            console.print(f"[dim]{remove_process.stderr.strip()}[/dim]")
         raise typer.Exit(1)
+    console.print(f"[green]✓[/green] Removed {len(identities)} keys from ssh-agent.")
 
 
 @app.command("generate-key")
@@ -287,34 +507,88 @@ def generate_key():
     """Generate a new SSH key."""
     check_for_command("ssh-keygen")
 
-    key_name = typer.prompt("Enter a name for the key file")
-    email = typer.prompt("Enter your email")
-    key_type_input = typer.prompt("Enter key type (rsa/ed25519/ecdsa)", default="ed25519")
-    key_type = key_type_input.strip().lower()
-    allowed_key_types = {"rsa", "ed25519", "ecdsa"}
-    if key_type not in allowed_key_types:
-        console.print(f"[red]Key type must be one of: {', '.join(sorted(allowed_key_types))}[/red]")
+    key_name = typer.prompt("Key filename", default="id_ed25519").strip()
+    if (
+        not key_name
+        or key_name in {".", ".."}
+        or Path(key_name).name != key_name
+        or Path(key_name).is_absolute()
+    ):
+        console.print(
+            "[red]Key filename must be one filename without directory components.[/red]"
+        )
         raise typer.Exit(1)
 
-    key_path = Path.home() / ".ssh" / key_name
+    ssh_dir = Path.home() / ".ssh"
+    key_path = ssh_dir / key_name
 
-    if key_path.exists():
+    if key_path.exists() or Path(f"{key_path}.pub").exists():
         console.print(f"[red]Key file '{key_path}' already exists.[/red]")
         raise typer.Exit(1)
-    
-    if not key_name or not email:
-        console.print("[red]Key name and email cannot be empty.[/red]")
-        raise typer.Exit(1)
+
+    key_type_selection = _fzf_select(
+        [
+            (
+                "ed25519",
+                "ed25519  [recommended]",
+                "Modern default with small keys and fast operations.",
+            ),
+            (
+                "ecdsa",
+                "ecdsa",
+                "Use ECDSA when a system or policy specifically requires it.",
+            ),
+            (
+                "rsa",
+                "rsa",
+                "Use RSA for compatibility with systems that do not support Ed25519.",
+            ),
+        ],
+        prompt="Key type > ",
+        header="↑/↓: move  Enter: select  ESC: cancel",
+    )
+    if not key_type_selection:
+        console.print("No changes made.")
+        raise typer.Exit()
+    key_type = key_type_selection[0]
+    comment = typer.prompt("Key comment (optional)", default="", show_default=False).strip()
+    protect_key = typer.confirm("Protect the private key with a passphrase?", default=True)
+
+    command = ["ssh-keygen", "-t", key_type, "-C", comment, "-f", str(key_path)]
+    if not protect_key:
+        console.print("[yellow]The private key will not have a passphrase.[/yellow]")
+        if not typer.confirm("Generate an unencrypted private key?", default=False):
+            console.print("No changes made.")
+            raise typer.Exit()
+        command.extend(["-N", ""])
+    else:
+        console.print("[dim]ssh-keygen will securely prompt for the passphrase twice.[/dim]")
 
     try:
-        subprocess.run(
-            ["ssh-keygen", "-t", key_type, "-C", email, "-f", str(key_path), "-N", ""],
-            check=True,
+        ssh_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        ssh_dir.chmod(0o700)
+        subprocess.run(command, check=True)
+        fingerprint_process = subprocess.run(
+            ["ssh-keygen", "-l", "-f", str(key_path)],
+            capture_output=True,
+            text=True,
+            check=False,
         )
-        console.print(f"Key generated: {key_path}")
-        console.print("Public key:")
-        with open(f"{key_path}.pub", "r") as f:
-            console.print(f.read())
+        summary = Table(show_header=False, box=None, pad_edge=False)
+        summary.add_column("Field", style="bold")
+        summary.add_column("Value")
+        summary.add_row("Private key", str(key_path))
+        summary.add_row("Public key", f"{key_path}.pub")
+        summary.add_row("Type", key_type)
+        summary.add_row("Passphrase", "protected" if protect_key else "none")
+        if fingerprint_process.returncode == 0:
+            parsed = _parse_keygen_listing(fingerprint_process.stdout.strip())
+            if parsed:
+                summary.add_row("Fingerprint", parsed[1])
+        console.print(
+            Panel(summary, title="[bold green]✓ SSH key generated[/bold green]")
+        )
+        console.print(f"Next: [cyan]ssh-add {shlex.quote(str(key_path))}[/cyan]")
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Failed to generate key: {e}[/red]")
         raise typer.Exit(1)
@@ -326,6 +600,7 @@ def generate_key():
 @app.command("remove-known-host")
 def remove_known_host():
     """Interactively remove SSH host entries from ~/.ssh/known_hosts."""
+    check_for_command("fzf")
     check_for_command("ssh-keygen")
 
     hosts_file = Path.home() / ".ssh" / "known_hosts"
@@ -337,12 +612,12 @@ def remove_known_host():
         console.print("[red]Cannot write to known_hosts file. Check permissions.[/red]")
         raise typer.Exit(1)
 
-    # Generate host list
-    hosts: dict[str, list[str]] = {}
+    # Keep each source line so the user can review the exact entries first.
+    hosts: dict[str, list[tuple[int, str, str]]] = {}
     order: list[str] = []
     with hosts_file.open("r") as f:
-        for line in f:
-            if not line.strip() or line.startswith("#"):
+        for line_number, line in enumerate(f, start=1):
+            if not line.strip() or line.lstrip().startswith("#"):
                 continue
             parts = line.split()
             if len(parts) < 2:
@@ -351,40 +626,102 @@ def remove_known_host():
             if host not in hosts:
                 hosts[host] = []
                 order.append(host)
-            hosts[host].append(key_type)
+            hosts[host].append((line_number, key_type, line.rstrip()))
 
-    host_choices = [
-        Choice(value=h, name=f"{h} [{', '.join(hosts[h])}]")
-        for h in order
-    ]
-
-    if not host_choices:
+    if not order:
         console.print("[green]No hosts found in known_hosts file.[/green]")
         raise typer.Exit()
 
-    try:
-        selections = inquirer.fuzzy(
-            message="Select host(s) to remove:",
-            choices=host_choices,
-            multiselect=True,
-            long_instruction="TAB to mark hosts. Enter to confirm. ESC/CTRL-C to cancel.",
-            border=True,
-            height="60%",
-            keybindings=FUZZY_KEYBINDINGS,
-        ).execute()
-    except KeyboardInterrupt:
+    choice_lines = []
+    for host in order:
+        key_types = ", ".join(dict.fromkeys(entry[1] for entry in hosts[host]))
+        entry_label = "entry" if len(hosts[host]) == 1 else "entries"
+        choice_lines.append(
+            f"{host}\t{host}  [{key_types}]  ({len(hosts[host])} {entry_label})"
+        )
+
+    preview_command = (
+        "awk -v host={1} "
+        "'$1 == host {printf \"Line %d\\n  %s\\n\\n\", NR, $0}' "
+        f"{shlex.quote(str(hosts_file))}"
+    )
+    selection_process = subprocess.run(
+        [
+            "fzf",
+            "--multi",
+            "--height=80%",
+            "--layout=reverse",
+            "--border=rounded",
+            "--delimiter=\\t",
+            "--with-nth=2",
+            "--prompt=Remove host(s) > ",
+            "--header=TAB/Shift-TAB: select  Enter: review  ESC: cancel",
+            "--preview-window=right:60%:wrap:border-left",
+            f"--preview={preview_command}",
+        ],
+        input="\n".join(choice_lines),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if selection_process.returncode in {1, 130}:
         console.print("No hosts selected. Aborting.")
         raise typer.Exit()
+    if selection_process.returncode != 0:
+        console.print("[red]fzf could not open the host selector.[/red]")
+        if selection_process.stderr.strip():
+            console.print(f"[dim]{selection_process.stderr.strip()}[/dim]")
+        raise typer.Exit(1)
+
+    selections = [
+        line.split("\t", maxsplit=1)[0]
+        for line in selection_process.stdout.splitlines()
+        if line
+    ]
 
     if not selections:
         console.print("No hosts selected. Aborting.")
         raise typer.Exit()
 
-    # Backup
-    backup_file = hosts_file.with_name(f"{hosts_file.name}.bak.{datetime.now().strftime('%Y%m%d-%H%M%S')}")
-    shutil.copy(hosts_file, backup_file)
-    console.print(f"Backed up known_hosts to [cyan]{backup_file.name}[/cyan]")
-    
+    review = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
+    review.add_column("Host", style="bold cyan", no_wrap=True)
+    review.add_column("Line", justify="right", style="dim")
+    review.add_column("Key type", style="magenta")
+    review.add_column("Key data / comment", overflow="fold")
+    for selected_host in selections:
+        for line_number, key_type, source_line in hosts[selected_host]:
+            parts = source_line.split(maxsplit=2)
+            detail = parts[2] if len(parts) == 3 else ""
+            review.add_row(selected_host, str(line_number), key_type, detail)
+
+    entry_count = sum(len(hosts[selected_host]) for selected_host in selections)
+    console.print()
+    console.print(
+        Panel(
+            review,
+            title="[bold]Review entries to remove[/bold]",
+            subtitle=(
+                f"{len(selections)} {'host' if len(selections) == 1 else 'hosts'}, "
+                f"{entry_count} {'entry' if entry_count == 1 else 'entries'}"
+            ),
+            border_style="yellow",
+        )
+    )
+    if not typer.confirm("Remove these entries?", default=False):
+        console.print("No changes made.")
+        raise typer.Exit()
+
+    backup_file = hosts_file.with_name(
+        f"{hosts_file.name}.bak.{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    )
+    try:
+        shutil.copy2(hosts_file, backup_file)
+    except OSError as error:
+        console.print(f"[bold red]Could not create backup:[/] {error}")
+        console.print("No hosts were removed.")
+        raise typer.Exit(1)
+    console.print(f"[green]✓[/green] Backup: [cyan]{backup_file}[/cyan]")
+
     # Cleanup old backups
     backup_dir = hosts_file.parent
     backups = sorted(
@@ -392,8 +729,24 @@ def remove_known_host():
         key=os.path.getmtime,
         reverse=True,
     )
-    for old_backup in backups[5:]:
-        old_backup.unlink()
+    expired_backups = backups[KNOWN_HOSTS_BACKUPS_TO_KEEP:]
+    cleanup_failures: list[Path] = []
+    for old_backup in expired_backups:
+        try:
+            old_backup.unlink()
+        except OSError:
+            cleanup_failures.append(old_backup)
+    if expired_backups and not cleanup_failures:
+        console.print(
+            f"[dim]Removed {len(expired_backups)} old "
+            f"{'backup' if len(expired_backups) == 1 else 'backups'}; "
+            f"kept the newest {KNOWN_HOSTS_BACKUPS_TO_KEEP}.[/dim]"
+        )
+    elif cleanup_failures:
+        console.print(
+            f"[yellow]Warning: could not remove {len(cleanup_failures)} old "
+            f"{'backup' if len(cleanup_failures) == 1 else 'backups'}.[/yellow]"
+        )
 
     # Remove hosts
     removed_count = 0
@@ -403,61 +756,137 @@ def remove_known_host():
             # We need to suppress the output of ssh-keygen
             subprocess.run(
                 ["ssh-keygen", "-R", host_to_remove, "-f", str(hosts_file)],
-                capture_output=True, check=True, text=True
+                capture_output=True,
+                check=True,
+                text=True,
             )
-            console.print(f"[green]Successfully removed:[/] {host_to_remove}")
+            console.print(f"[green]✓[/green] Removed {host_to_remove}")
             removed_count += 1
         except subprocess.CalledProcessError as e:
-            console.print(f"[red]Failed to remove host:[/] {host_to_remove}")
-            console.print(f"  [dim]{e.stderr}[/dim]")
+            console.print(f"[red]✗ Failed:[/] {host_to_remove}")
+            if e.stderr.strip():
+                console.print(f"  [dim]{e.stderr.strip()}[/dim]")
             failed_count += 1
 
-    console.print(f"Successfully removed {removed_count} host(s)")
+    console.print()
+    summary_style = "bold green" if failed_count == 0 else "bold yellow"
+    console.print(
+        f"[{summary_style}]Removed {removed_count} of {len(selections)} selected "
+        f"{'host' if len(selections) == 1 else 'hosts'}.[/]"
+    )
     if failed_count > 0:
-        console.print(f"{failed_count} host(s) failed to remove", style="bold red")
+        console.print(f"Restore from [cyan]{backup_file}[/cyan] if needed.")
         raise typer.Exit(1)
-    console.print("[bold green]Done[/bold green]")
 
 
 @app.command("fix-permissions")
-def fix_permissions():
-    """Fix permissions for ~/.ssh directory and files."""
+def fix_permissions(
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show required changes without applying them",
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Apply changes without an interactive confirmation",
+    ),
+) -> None:
+    """Preview and repair permissions for recognized SSH files."""
+    check_for_command("ssh-keygen")
     ssh_dir = Path.home() / ".ssh"
-    fixed_count = 0
-
     if not ssh_dir.exists():
-        ssh_dir.mkdir(0o700)
-        console.print(f"Created directory {ssh_dir} with 700 permissions.")
-        fixed_count += 1
-    
-    # Fix .ssh directory permissions
-    if ssh_dir.stat().st_mode & 0o777 != 0o700:
-        ssh_dir.chmod(0o700)
-        console.print(f"Fixed permissions on {ssh_dir}")
-        fixed_count += 1
+        console.print(f"[yellow]{ssh_dir} does not exist.[/yellow]")
+        if dry_run:
+            console.print("Would create it with mode 0700.")
+            raise typer.Exit()
+        if not apply and not typer.confirm(
+            f"Create {ssh_dir} with mode 0700?", default=False
+        ):
+            console.print("No changes made.")
+            raise typer.Exit()
+        ssh_dir.mkdir(mode=0o700, parents=True)
+        console.print(f"[green]✓[/green] Created {ssh_dir} with mode 0700.")
+        raise typer.Exit()
 
-    # Fix file permissions
-    for path in ssh_dir.iterdir():
-        if path.is_file():
-            if path.name.endswith(".pub") or path.name in [
-                "known_hosts",
-                "authorized_keys",
-                "config",
-            ]:
-                if path.stat().st_mode & 0o777 != 0o644:
-                    path.chmod(0o644)
-                    console.print(f"Fixed permissions on {path}")
-                    fixed_count += 1
-            else:  # Assume private key
-                if path.stat().st_mode & 0o777 != 0o600:
-                    path.chmod(0o600)
-                    console.print(f"Fixed permissions on {path}")
-                    fixed_count += 1
-    
-    if fixed_count == 0:
+    changes: list[tuple[Path, int, int, str]] = []
+    skipped: list[Path] = []
+
+    directory_mode = stat.S_IMODE(ssh_dir.stat().st_mode)
+    if directory_mode != 0o700:
+        changes.append((ssh_dir, directory_mode, 0o700, "SSH directory"))
+
+    for path in sorted(ssh_dir.iterdir(), key=lambda item: item.name.casefold()):
+        if path.is_symlink() or not path.is_file():
+            continue
+        target_mode: Optional[int] = None
+        reason = ""
+        if path.name in {"config", "authorized_keys"}:
+            target_mode = 0o600
+            reason = "private SSH configuration"
+        elif path.name.startswith("known_hosts"):
+            target_mode = 0o644
+            reason = "known host public keys"
+        elif path.name.endswith(".pub"):
+            target_mode = 0o644
+            reason = "public key"
+        else:
+            key_probe = subprocess.run(
+                ["ssh-keygen", "-l", "-f", str(path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if key_probe.returncode == 0:
+                target_mode = 0o600
+                reason = "private key"
+
+        if target_mode is None:
+            skipped.append(path)
+            continue
+        current_mode = stat.S_IMODE(path.stat().st_mode)
+        if current_mode != target_mode:
+            changes.append((path, current_mode, target_mode, reason))
+
+    if not changes:
         console.print("All SSH files already have correct permissions.")
-    else:
-        console.print(f"Fixed permissions on {fixed_count} item(s).")
+        if skipped:
+            console.print(f"[dim]Skipped {len(skipped)} unrecognized files.[/dim]")
+        raise typer.Exit()
+
+    table = Table("Path", "Current", "Target", "Classification")
+    for path, current_mode, target_mode, reason in changes:
+        table.add_row(str(path), f"{current_mode:04o}", f"{target_mode:04o}", reason)
+    console.print(
+        Panel(
+            table,
+            title="[bold yellow]Permission changes[/bold yellow]",
+            subtitle=f"{len(changes)} {'item' if len(changes) == 1 else 'items'}",
+        )
+    )
+    if skipped:
+        console.print(
+            f"[dim]Skipped {len(skipped)} unrecognized files; their modes will not change.[/dim]"
+        )
+    if dry_run:
+        console.print("Dry run: no changes made.")
+        raise typer.Exit()
+    if not apply and not typer.confirm("Apply these permission changes?", default=False):
+        console.print("No changes made.")
+        raise typer.Exit()
+
+    failures = []
+    for path, _current_mode, target_mode, _reason in changes:
+        try:
+            path.chmod(target_mode)
+            console.print(f"[green]✓[/green] {path} → {target_mode:04o}")
+        except OSError as error:
+            failures.append((path, error))
+            console.print(f"[red]✗[/red] {path}: {error}")
+    if failures:
+        console.print(f"[red]{len(failures)} permission changes failed.[/red]")
+        raise typer.Exit(1)
+    console.print(f"[bold green]Updated {len(changes)} items.[/bold green]")
 
 
 if __name__ == "__main__":

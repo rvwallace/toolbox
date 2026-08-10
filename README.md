@@ -80,7 +80,7 @@ netinfo
 | Command | Description |
 |---------|-------------|
 | `ssh-remove-host` | Edit `known_hosts` |
-| `ssh-sc` | SSH key and host helper (interactive) |
+| `ssh-sc` | Interactive SSH key and host helper; see [`docs/ssh-sc.md`](docs/ssh-sc.md) |
 | `tssh` | Open SSH connections in a dedicated local tmux session; see [`docs/tssh.md`](docs/tssh.md) |
 
 ### Productivity
