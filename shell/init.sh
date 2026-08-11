@@ -297,9 +297,6 @@ if [[ -d "$TOOLBOX_ROOT/shell/modules" ]]; then
 			. "$_toolbox_module"
 			[[ -z "${_toolbox_current_unavailable:-}" ]] && toolbox_mark_module_active "$_tb_stem"
 		done
-		# Update completions
-		autoload -Uz compinit
-		compinit
 	elif [[ -n "${BASH_VERSION:-}" ]]; then
 		for _toolbox_module in "$TOOLBOX_ROOT/shell/modules"/*.bash; do
 			[[ -f "$_toolbox_module" ]] || continue
