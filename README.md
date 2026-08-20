@@ -73,6 +73,7 @@ netinfo
 | `nerdfont-install` | Nerd Font installer |
 | `op-clip` | 1Password clipboard helper |
 | `tmux-exec` | Run commands in tmux panes |
+| `upkeep` | Interactive package updater for Homebrew, uv, Cargo, and Go; see [`docs/upkeep.md`](docs/upkeep.md) |
 | `vmrss` | Process RSS memory |
 
 ### SSH
