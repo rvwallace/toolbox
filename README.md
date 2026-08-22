@@ -185,6 +185,7 @@ After `source shell/init.sh`:
 ```text
 toolbox/
 ├── README.md
+├── CHANGELOG.md
 ├── AGENTS.md
 ├── CONTEXT.md
 ├── toolbox              # bash proxy → bin/toolbox (builds with go if needed)
