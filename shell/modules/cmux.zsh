@@ -350,3 +350,28 @@ _toolbox_cmux_jc_wrapper() {
 compdef _toolbox_cmux cmux
 compdef _toolbox_cmux_ssh_wrapper cssh
 compdef _toolbox_cmux_jc_wrapper csshjc
+
+# --- ZLE Keybindings ---
+if [[ -n "$CMUX_WORKSPACE_ID" ]]; then
+    # Open current pane scrollback in $EDITOR (Ctrl-X, v)
+    _cmux_pane_to_editor() {
+        local tmpfile
+        tmpfile=$(mktemp /tmp/cmux-pane-XXXXXX.txt)
+        cmux capture-pane --scrollback | sed 's/[[:space:]]*$//' | sed '/./,$!d' > "$tmpfile"
+        zle -I
+        $EDITOR "$tmpfile"
+        rm -f "$tmpfile"
+    }
+    zle -N _cmux_pane_to_editor
+    bindkey -M emacs "^Xv" _cmux_pane_to_editor 2>/dev/null || true
+    bindkey -M viins "^Xv" _cmux_pane_to_editor 2>/dev/null || true
+
+    # Flash current pane border marker (Ctrl-X, f)
+    _cmux_flash() {
+        cmux trigger-flash &>/dev/null
+        zle reset-prompt
+    }
+    zle -N _cmux_flash
+    bindkey -M emacs "^Xf" _cmux_flash 2>/dev/null || true
+    bindkey -M viins "^Xf" _cmux_flash 2>/dev/null || true
+fi
