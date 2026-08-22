@@ -130,10 +130,10 @@ Path: `~/.config/silentcastle/toolbox/shell.yaml` (or `$XDG_CONFIG_HOME/silentca
 
 ```yaml
 disabled_modules:
-  - zmx
+  - chef
 ```
 
-Disabling stem **`zmx`** skips `shell/modules/zmx.sh`, `shell/modules/zmx.bash` (if present), and `shell/modules/zmx.zsh`.
+Disabling stem **`chef`** skips `shell/modules/chef.sh`, `shell/modules/chef.bash` (if present), and `shell/modules/chef.zsh`.
 
 ### Effective disabled set
 
@@ -163,10 +163,10 @@ Sourced from `shell/init.sh`. Wraps `bin/toolbox` and adds:
 Examples:
 
 ```bash
-toolboxctl disable zmx          # persist in shell.yaml
-toolboxctl disable zmx -r       # persist + reload shell
-toolboxctl disable zmx -t       # session only (export TOOLBOX_SHELL_DISABLED)
-toolboxctl enable zmx -t        # session override (TOOLBOX_SHELL_ENABLED)
+toolboxctl disable chef          # persist in shell.yaml
+toolboxctl disable chef -r       # persist + reload shell
+toolboxctl disable chef -t       # session only (export TOOLBOX_SHELL_DISABLED)
+toolboxctl enable chef -t        # session override (TOOLBOX_SHELL_ENABLED)
 toolboxctl list                 # same as toolbox shell list
 toolboxctl install              # forwards to bin/toolbox install
 ```
@@ -181,7 +181,7 @@ Subcommands `disable`, `enable`, `list`, `path`, and `effective` map to `toolbox
 - `DEFAULT` - whether the module is disabled by default in `shell.yaml`
 - `OVERRIDE` - whether this shell session changed the default with `TOOLBOX_SHELL_DISABLED` or `TOOLBOX_SHELL_ENABLED`
 - `RUNTIME` - what happened when `init.sh` tried to source the module in this shell session
-- `WHY` - short reason for `unavailable`, such as `missing:kubectl`, `missing:zmx`, or `outside:tmux`
+- `WHY` - short reason for `unavailable`, such as `missing:kubectl`, `missing:aws`, or `outside:tmux`
 
 `RUNTIME` values:
 
@@ -204,11 +204,10 @@ Toolbox shell modules use a companion-file pattern when a helper needs shell-spe
 
 Examples in this repo:
 
-- `shell/modules/tmux.sh` defines `tp`; `shell/modules/tmux.zsh` adds zsh completion
+- `shell/modules/ansible.sh` defines Ansible `uv` CLI wrappers
+- `shell/modules/tmux.sh` defines `tp`; `shell/modules/tmux.zsh` adds zsh completion and keybinding
 - `shell/modules/git.sh` defines `git.ignore.add` and git helper functions; `shell/modules/git.zsh` adds zsh completion
-- `shell/modules/cmux.sh` defines `cssh` / `csshjc`; `shell/modules/cmux.zsh` adds zsh completion for `cmux` and the wrapper helpers
-- `shell/modules/ai.zsh` combines zsh widget behavior and `aichat` completion
-- `shell/modules/aws.sh` defines `aws.env`; `shell/modules/aws.bash` and `shell/modules/aws.zsh` provide respective cross-shell autocomplete hooks
+- `shell/modules/aws.sh` defines `aws.env`; `shell/modules/aws.bash` and `shell/modules/aws.zsh` provide respective cross-shell autocomplete hooks and Starship prompt TTL helpers
 - `shell/modules/terraform.sh` defines MR plan helpers (`tf.plan.save`, …), Terraform aliases, and optional `tf.amd64` for special-case linux/amd64 on Apple Silicon; `terraform.zsh` / `terraform.bash` add `tfswitch` chpwd hooks and completions (see `docs/terraform.md`)
 - `shell/modules/sesh.bash` and `shell/modules/sesh.zsh` load cached generated completions with version-sidecar invalidation
 

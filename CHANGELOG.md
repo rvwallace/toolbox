@@ -8,7 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-08-22
 
-- Migrated `cmux` and `tmux` ZLE keybindings (`^X^C` for `cmux.ssh`, `^T` for `tp`) from `sc-zsh` to `shell/modules/{cmux,tmux}.zsh`
+- Removed AI utilities, shell dispatcher, roles, and docs (`scripts/ai/ollama-update.sh`, `contrib/aichat-roles/`, `shell/modules/ai.{sh,bash,zsh}`, `docs/ai.md`) — migrated to tmux-conf
+- Removed `cmux` shell module and completions (`shell/modules/cmux.{sh,zsh}`)
+- Removed `zmx` shell integration, keybindings, completions, and docs (`shell/modules/zmx.{sh,bash,zsh}`, `docs/zmx.md`)
+- Migrated `tmux` ZLE keybinding (`^T` for `tp`) from `sc-zsh` to `shell/modules/tmux.zsh`
 - Migrated AWS token TTL prompt caching helper (`aws.token.ttl.prompt`) to `shell/modules/aws.zsh` for Starship prompt integration
 - Migrated Ansible `uv` wrappers (`ansible`, `ansible-playbook`, `ansible-vault`, `ansible-galaxy`, `ansible-lint`, `ansible-console`, `ansible-inventory`, `ansible-doc`, `ansible-config`, `ansible-pull`) to `shell/modules/ansible.sh`
 

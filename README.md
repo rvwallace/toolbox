@@ -95,12 +95,6 @@ netinfo
 |---------|-------------|
 | `ghrel` | Browse releases and download assets (TUI); see [`docs/ghrel.md`](docs/ghrel.md) |
 
-### AI
-
-| Command | Description |
-|---------|-------------|
-| `ollama-update` | Update Ollama models |
-
 ### Media
 
 | Command | Description |
@@ -171,14 +165,15 @@ After `source shell/init.sh`:
 
 | Module | Functions |
 |--------|-----------|
+| `ansible.sh` | `ansible` wrappers via `uv run` |
 | `aws.sh` | `aws.caller_identity`; `aws.env` (set/profile/region/show/clear/token-status — wraps `aws-env`) |
-| `ai.sh` | `claude.monitor` |
-| `ai.zsh` | Alt-e `aichat` dispatcher (`docs/ai.md`) plus zsh completion for `aichat` |
-| `cmux.zsh` | zsh completion for `cmux`, `cssh`, and `csshjc` |
+| `chef.sh` | `chef.env` (set/clear/show/list) |
 | `git.sh` | `git.ignore.add` plus git helper functions |
+| `kube.sh` | `k.env` Kubernetes interactive helper |
+| `net.sh` | Network-related shell helpers |
+| `sesh.zsh` | `sesh` cached completions |
+| `terraform.sh` | `tf.plan.save`, `tf.apply.save`, `tf` aliases, `tfswitch` auto-switch hook |
 | `tmux.sh` | `tp` popup helper |
-| `git.zsh` | zsh completion for `git.ignore.add` |
-| `tmux.zsh` | zsh completion for `tp` |
 
 ## Project structure
 
