@@ -1,11 +1,26 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# Ansible aliases using uv for isolated, reproducible environments
+# Ansible: prefer a persistent `uv tool install` over the ephemeral `uv run --with`
+# wrapper. These are placeholders only — once installed, the real PATH binaries
+# take over and these functions are simply never defined.
 
-toolbox_require_commands uv uv || return 0
+toolbox_require_commands ansible uv || return 0
 
-alias ansible='uv run --with ansible-core ansible'
-alias ansible-playbook='uv run --with ansible-core ansible-playbook'
-alias ansible-vault='uv run --with ansible-core ansible-vault'
-alias ansible-galaxy='uv run --with ansible-core ansible-galaxy'
-alias ansible-lint='uv run --with ansible-lint ansible-lint'
+_ansible_install_hint() {
+    cat >&2 <<EOF
+'$1' is not installed.
+
+Install with:
+  uv tool install ansible-core
+  uv tool install ansible-lint
+
+Then restart your shell (or run: exec \$SHELL) to pick up the new binaries.
+EOF
+    return 127
+}
+
+for _ansible_cmd in ansible ansible-playbook ansible-vault ansible-galaxy ansible-lint \
+    ansible-doc ansible-config ansible-console ansible-inventory ansible-pull; do
+    command -v "$_ansible_cmd" >/dev/null 2>&1 || eval "${_ansible_cmd}() { _ansible_install_hint ${_ansible_cmd}; }"
+done
+unset _ansible_cmd

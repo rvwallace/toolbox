@@ -4,7 +4,6 @@
 toolbox_require_commands kube kubectl || return 0
 
 # --- Aliases ---
-alias k="kubectl"
 alias k.ctx-list="kubectl config get-contexts"
 alias k.get-all="kubectl get all --all-namespaces"
 

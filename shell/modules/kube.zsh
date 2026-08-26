@@ -53,4 +53,3 @@ _toolbox_kubectl_load_zsh_completion() {
 }
 
 _toolbox_kubectl_load_zsh_completion
-compdef k=kubectl

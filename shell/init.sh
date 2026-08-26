@@ -211,6 +211,7 @@ toolbox_mark_module_unavailable() {
 	_toolbox_status_set_unavailable "$stem" "$reason"
 }
 
+# usage: toolbox_require_commands <stem> <cmd>...
 toolbox_require_commands() {
 	local stem="${1:-${_toolbox_current_stem:-}}"
 	shift || true

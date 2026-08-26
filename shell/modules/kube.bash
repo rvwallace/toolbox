@@ -27,7 +27,7 @@ _kube_env_complete_bash() {
 
 complete -F _kube_env_complete_bash k.env
 
-# Provide standard completions for the `k` alias
+# Load kubectl's own completion script (for the `kubectl` command itself)
 if command -v kubectl >/dev/null 2>&1; then
     _toolbox_kubectl_load_bash_completion() {
         local cache_dir cache_file version_file current_version
@@ -44,5 +44,4 @@ if command -v kubectl >/dev/null 2>&1; then
     }
 
     _toolbox_kubectl_load_bash_completion
-    complete -o default -F __start_kubectl k 2>/dev/null
 fi

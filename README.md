@@ -103,7 +103,7 @@ netinfo
 
 ## Documentation
 
-Longer guides (examples, env vars, scenarios) live under `docs/`. For the **manager**, bootstrap, `toolboxctl`, and `shell.yaml`, see [`docs/toolbox.md`](docs/toolbox.md). For Terraform shell helpers (`tf.plan.save`, MR plans), see [`docs/terraform.md`](docs/terraform.md). For Go command standards, see [`docs/go-cli.md`](docs/go-cli.md). For Python, shell, Swift, and cross-tool metadata standards, see [`docs/tool-authoring.md`](docs/tool-authoring.md). For HTTP tooling start with `docs/httpkit.md`, or see **Documentation** in `AGENTS.md` for the full list.
+Longer guides (examples, env vars, scenarios) live under `docs/`. For the **manager**, bootstrap, `toolboxctl`, and `shell.yaml`, see [`docs/toolbox.md`](docs/toolbox.md). For Terraform shell helpers (`terraform.plan.save`, MR plans), see [`docs/terraform.md`](docs/terraform.md). For Go command standards, see [`docs/go-cli.md`](docs/go-cli.md). For Python, shell, Swift, and cross-tool metadata standards, see [`docs/tool-authoring.md`](docs/tool-authoring.md). For HTTP tooling start with `docs/httpkit.md`, or see **Documentation** in `AGENTS.md` for the full list.
 
 ## Installation
 
@@ -165,14 +165,13 @@ After `source shell/init.sh`:
 
 | Module | Functions |
 |--------|-----------|
-| `ansible.sh` | `ansible` wrappers via `uv run` |
+| `ansible.sh` | Placeholder functions hinting at `uv tool install ansible-core`/`ansible-lint`; no-ops once installed |
 | `aws.sh` | `aws.caller_identity`; `aws.env` (set/profile/region/show/clear/token-status — wraps `aws-env`) |
 | `chef.sh` | `chef.env` (set/clear/show/list) |
 | `git.sh` | `git.ignore.add` plus git helper functions |
 | `kube.sh` | `k.env` Kubernetes interactive helper |
-| `net.sh` | Network-related shell helpers |
 | `sesh.zsh` | `sesh` cached completions |
-| `terraform.sh` | `tf.plan.save`, `tf.apply.save`, `tf` aliases, `tfswitch` auto-switch hook |
+| `terraform.sh` | `terraform.plan.save`, `terraform.apply.save`, `tfswitch` auto-switch hook |
 | `tmux.sh` | `tp` popup helper |
 
 ## Project structure

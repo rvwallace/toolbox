@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-08-25
+
+- Fixed `shell/modules/chef.sh` dependency guard: `toolbox_require_commands knife` had no command to check (the sole argument was consumed as the stem), so `chef.env` always loaded regardless of whether `knife` was installed. This was a regression from commit `d246752` ("fix(chef): correct command dependency check"), which had inverted the fix by removing the `chef` stem argument while `chef.bash`/`chef.zsh` kept the correct two-argument form. Restored to `toolbox_require_commands chef knife`.
+- Fixed `shell/modules/ansible.sh` reporting the wrong module name (`uv` instead of `ansible`) in `toolbox shell list` status when `uv` is missing (`toolbox_require_commands uv uv` → `toolbox_require_commands ansible uv`)
+- Added a usage comment above `toolbox_require_commands` in `shell/init.sh` documenting its `(stem, cmd...)` signature, since the signature mix-up caused both bugs above
+- Removed empty `shell/modules/net.sh` (contained only comments, no functions or aliases)
+- Rewrote `shell/modules/ansible.sh`: replaced the `uv run --with` alias wrappers with placeholder functions covering all 10 `ansible-core` entry points (`ansible`, `ansible-playbook`, `ansible-vault`, `ansible-galaxy`, `ansible-doc`, `ansible-config`, `ansible-console`, `ansible-inventory`, `ansible-pull`) plus `ansible-lint`. Each placeholder only fires when the real binary isn't already on `PATH`, and prints `uv tool install` instructions instead of running an ephemeral `uv run` environment on every invocation.
+- Removed `tf`, `tf.plan`, `tf.apply`, `tf.destroy.plan` shortcut aliases from `shell/modules/terraform.sh` (use the full `terraform` command instead); kept the `tfswitch` alias since it pins the tfswitch-installed binary path rather than saving keystrokes, and the `chpwd`/`PROMPT_COMMAND` auto-switch hooks depend on it
+- Removed duplicate hyphenated aliases `tf-plan-save`, `tf-state-show-save`, `tf-apply-save`, `tf-apply-last` from `shell/modules/terraform.sh` and their `compdef` registrations in `shell/modules/terraform.zsh`
+- Renamed `tf.plan.save`, `tf.state.show.save`, `tf.apply.save`, `tf.apply.last` to `terraform.plan.save`, `terraform.state.show.save`, `terraform.apply.save`, `terraform.apply.last` in `shell/modules/terraform.sh` (and their `compdef` targets in `terraform.zsh`), dropping the `tf` abbreviation to match removing the `tf`/`tf.plan`/`tf.apply` shortcut aliases; `tf.amd64` is unrelated and unchanged
+- Removed the `k` alias (`=kubectl`) from `shell/modules/kube.sh` and its completion registrations in `kube.bash`/`kube.zsh`; kept `k.ctx-list`, `k.get-all`, and `k.env`
+- Updated `README.md`, `docs/terraform.md`, and `docs/toolbox.md` to match the above
+
 ### 2026-08-22
 
 - Removed AI utilities, shell dispatcher, roles, and docs (`scripts/ai/ollama-update.sh`, `contrib/aichat-roles/`, `shell/modules/ai.{sh,bash,zsh}`, `docs/ai.md`) — migrated to tmux-conf

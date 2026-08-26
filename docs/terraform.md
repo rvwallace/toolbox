@@ -11,7 +11,7 @@ Attach a human-readable plan when opening a GitLab MR:
 ```bash
 export TICKET=TCM-1060
 cd path/to/terraform/stack
-tf.plan.save
+terraform.plan.save
 # → ~/silentcastle/tf-plans/TCM-1060-<timestamp>.txt
 # → ~/silentcastle/tf-plans/TCM-1060-<timestamp>-show.txt
 # → ~/silentcastle/tf-plans/TCM-1060-<timestamp>.tfplan (local only; do not commit)
@@ -20,38 +20,25 @@ tf.plan.save
 Post-apply state evidence (optional):
 
 ```bash
-tf.state.show.save 'dba_mgmt|rds' --managed-only
+terraform.state.show.save 'dba_mgmt|rds' --managed-only
 ```
 
 Plan then apply with saved artifacts:
 
 ```bash
-tf.apply.save          # plan-save, confirm, apply
-tf.apply.last --yes    # apply latest plan for $TICKET
+terraform.apply.save          # plan-save, confirm, apply
+terraform.apply.last --yes    # apply latest plan for $TICKET
 ```
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| `tf.plan.save` | `terraform plan` + tee log + `terraform show` sidecar |
-| `tf.state.show.save` | Dump `terraform state show` for selected addresses |
-| `tf.apply.save` | `tf.plan.save`, confirm, `terraform apply` saved plan |
-| `tf.apply.last` | Apply newest `$TICKET-*.tfplan` in `TF_PLANS_DIR` |
+| `terraform.plan.save` | `terraform plan` + tee log + `terraform show` sidecar |
+| `terraform.state.show.save` | Dump `terraform state show` for selected addresses |
+| `terraform.apply.save` | `terraform.plan.save`, confirm, `terraform apply` saved plan |
+| `terraform.apply.last` | Apply newest `$TICKET-*.tfplan` in `TF_PLANS_DIR` |
 | `tf.amd64` | Run HashiCorp terraform image as linux/amd64 (Darwin arm64 + Docker only) |
-
-Aliases: `tf-plan-save`, `tf-state-show-save`, `tf-apply-save`, `tf-apply-last`.
-
-Quick local scratch plans (not MR archive):
-
-| Alias | Command |
-|-------|---------|
-| `tf` | `terraform` |
-| `tf.plan` | `terraform plan -out=tfplan` |
-| `tf.apply` | `terraform apply tfplan` |
-| `tf.destroy.plan` | `terraform plan -destroy -out=tfplan` |
-
-These match the Terraform aliases previously in [sc-zsh `includes/aliases.zsh`](https://github.com/silentcastle/sc-zsh). If you source toolbox `init.sh`, you can remove that Terraform block from sc-zsh to avoid duplicate aliases.
 
 ## Environment
 
@@ -72,23 +59,23 @@ Credentials (`AWS_PROFILE`, assume_role in `providers.tf`, etc.) are never overr
 
 ## Flags
 
-**`tf.plan.save`:** `--init`, `--no-sensitive`, `--` then any `terraform plan` arguments.
+**`terraform.plan.save`:** `--init`, `--no-sensitive`, `--` then any `terraform plan` arguments.
 
-**`tf.state.show.save`:** optional extended-regex grep pattern; `--managed-only` skips `data.*` addresses.
+**`terraform.state.show.save`:** optional extended-regex grep pattern; `--managed-only` skips `data.*` addresses.
 
-**`tf.apply.save`:** `--init`, `--yes`, `--` then plan arguments.
+**`terraform.apply.save`:** `--init`, `--yes`, `--` then plan arguments.
 
-**`tf.apply.last`:** `--yes`.
+**`terraform.apply.last`:** `--yes`.
 
 ## `tfswitch` hook
 
 On interactive zsh/bash, entering a directory with `.terraform-version`, `.tfswitchrc`, or `versions.tf` runs `tfswitch` (alias: `tfswitch -b ~/.local/bin/terraform`). Implemented in `terraform.zsh` / `terraform.bash`.
 
-`tf.plan.save` also runs a quiet `tfswitch` before plan if the hook did not run.
+`terraform.plan.save` also runs a quiet `tfswitch` before plan if the hook did not run.
 
 ## Sensitive values
 
-`terraform show` may include sensitive values. Review before posting to a public MR. Use `--no-sensitive` on `tf.plan.save` when your Terraform version supports it.
+`terraform show` may include sensitive values. Review before posting to a public MR. Use `--no-sensitive` on `terraform.plan.save` when your Terraform version supports it.
 
 ## Module layout
 
@@ -102,4 +89,4 @@ Disable via `toolboxctl disable terraform` or `disabled_modules` in `~/.config/s
 
 ## Exit codes
 
-`tf.plan.save` returns Terraform plan exit codes (0 = no changes, 1 = error, 2 = changes present). Text artifacts are still written on non-zero exits when plan output was captured.
+`terraform.plan.save` returns Terraform plan exit codes (0 = no changes, 1 = error, 2 = changes present). Text artifacts are still written on non-zero exits when plan output was captured.

@@ -86,7 +86,7 @@ _tf_latest_plan() {
     # shellcheck disable=SC2012
     latest="$(ls -t "$TF_PLANS_DIR/${ticket}-"*.tfplan 2>/dev/null | head -1)"
     if [[ -z "$latest" ]]; then
-        printf 'tf: no saved plan for %s in %s (run tf.plan.save first)\n' "$ticket" "$TF_PLANS_DIR" >&2
+        printf 'tf: no saved plan for %s in %s (run terraform.plan.save first)\n' "$ticket" "$TF_PLANS_DIR" >&2
         return 1
     fi
     printf '%s' "$latest"
@@ -125,8 +125,8 @@ _tf_print_plan_summary() {
     printf 'Attach .txt or -show.txt to GitLab MR; do not commit .tfplan to git.\n' >&2
 }
 
-# Usage: tf.plan.save [--init] [--no-sensitive] [--] [terraform plan args...]
-tf.plan.save() {
+# Usage: terraform.plan.save [--init] [--no-sensitive] [--] [terraform plan args...]
+terraform.plan.save() {
     local ticket="" stamp="" init=false no_sensitive=false
     local -a plan_args=()
     local plan_exit=0 show_exit=0
@@ -205,8 +205,8 @@ tf.plan.save() {
     return "$plan_exit"
 }
 
-# Usage: tf.state.show.save [grep-pattern] [--managed-only]
-tf.state.show.save() {
+# Usage: terraform.state.show.save [grep-pattern] [--managed-only]
+terraform.state.show.save() {
     local ticket="" stamp="" pattern="" managed_only=false
     local state_file="" addr="" list_exit=0
     local -a addresses=()
@@ -222,7 +222,7 @@ tf.state.show.save() {
                 break
                 ;;
             -*)
-                printf 'tf.state.show.save: unknown option %s\n' "$1" >&2
+                printf 'terraform.state.show.save: unknown option %s\n' "$1" >&2
                 return 1
                 ;;
             *)
@@ -298,8 +298,8 @@ tf.state.show.save() {
     return 0
 }
 
-# Usage: tf.apply.save [--init] [--yes] [--] [terraform plan args...]
-tf.apply.save() {
+# Usage: terraform.apply.save [--init] [--yes] [--] [terraform plan args...]
+terraform.apply.save() {
     local init=false auto_yes=false
     local -a plan_args=()
     local plan_exit=0 apply_exit=0
@@ -330,7 +330,7 @@ tf.apply.save() {
     [[ "$init" == "true" ]] && save_args+=(--init)
     save_args+=(-- "${plan_args[@]}")
 
-    tf.plan.save "${save_args[@]}"
+    terraform.plan.save "${save_args[@]}"
     plan_exit=$?
 
     if ((plan_exit == 1)); then
@@ -363,8 +363,8 @@ tf.apply.save() {
     return 0
 }
 
-# Usage: tf.apply.last [--yes]
-tf.apply.last() {
+# Usage: terraform.apply.last [--yes]
+terraform.apply.last() {
     local auto_yes=false plan_file="" txt_file=""
     local apply_exit=0
 
@@ -375,7 +375,7 @@ tf.apply.last() {
                 shift
                 ;;
             *)
-                printf 'tf.apply.last: unknown argument %s\n' "$1" >&2
+                printf 'terraform.apply.last: unknown argument %s\n' "$1" >&2
                 return 1
                 ;;
         esac
@@ -416,15 +416,6 @@ tf.apply.last() {
     return 0
 }
 
-alias tf='terraform'
-alias tf.plan='terraform plan -out=tfplan'
-alias tf.apply='terraform apply tfplan'
-alias tf.destroy.plan='terraform plan -destroy -out=tfplan'
-alias tf-plan-save='tf.plan.save'
-alias tf-state-show-save='tf.state.show.save'
-alias tf-apply-save='tf.apply.save'
-alias tf-apply-last='tf.apply.last'
-
 if command -v tfswitch >/dev/null 2>&1; then
     alias tfswitch='tfswitch -b ~/.local/bin/terraform'
 fi
@@ -444,7 +435,7 @@ if [[ "$_terraform_platform" == "Darwin:arm64" ]] && command -v docker >/dev/nul
         printf '%s' "$version"
     }
 
-    # Special case: linux/amd64 Terraform in Docker (not used by tf.plan.save).
+    # Special case: linux/amd64 Terraform in Docker (not used by terraform.plan.save).
     tf.amd64() {
         local tag image
         local uid gid passwd_file group_file exit_code container_ssh_auth_sock

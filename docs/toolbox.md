@@ -204,11 +204,11 @@ Toolbox shell modules use a companion-file pattern when a helper needs shell-spe
 
 Examples in this repo:
 
-- `shell/modules/ansible.sh` defines Ansible `uv` CLI wrappers
+- `shell/modules/ansible.sh` defines placeholder functions hinting at `uv tool install` for the `ansible-core`/`ansible-lint` entry points
 - `shell/modules/tmux.sh` defines `tp`; `shell/modules/tmux.zsh` adds zsh completion and keybinding
 - `shell/modules/git.sh` defines `git.ignore.add` and git helper functions; `shell/modules/git.zsh` adds zsh completion
 - `shell/modules/aws.sh` defines `aws.env`; `shell/modules/aws.bash` and `shell/modules/aws.zsh` provide respective cross-shell autocomplete hooks and Starship prompt TTL helpers
-- `shell/modules/terraform.sh` defines MR plan helpers (`tf.plan.save`, …), Terraform aliases, and optional `tf.amd64` for special-case linux/amd64 on Apple Silicon; `terraform.zsh` / `terraform.bash` add `tfswitch` chpwd hooks and completions (see `docs/terraform.md`)
+- `shell/modules/terraform.sh` defines MR plan helpers (`terraform.plan.save`, …), the `tfswitch` alias, and optional `tf.amd64` for special-case linux/amd64 on Apple Silicon; `terraform.zsh` / `terraform.bash` add `tfswitch` chpwd hooks and completions (see `docs/terraform.md`)
 - `shell/modules/sesh.bash` and `shell/modules/sesh.zsh` load cached generated completions with version-sidecar invalidation
 
 This is intentionally different from a separate autoloaded `functions/` and `completions/` tree. For toolbox-owned shell behavior, prefer sourced modules so the helper and its integration live in one place.

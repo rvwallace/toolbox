@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Chef Interactive shell module
 
-toolbox_require_commands knife || return 0
+toolbox_require_commands chef knife || return 0
 
 # --- Functions ---
 chef.env() {
