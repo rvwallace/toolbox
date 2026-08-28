@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-08-28
+
+- Added `ollama.update` CLI script (`scripts/ai/ollama.update.sh`) to update all installed local Ollama models with transient live pull progress output
+
 ### 2026-08-25
 
 - Fixed `shell/modules/chef.sh` dependency guard: `toolbox_require_commands knife` had no command to check (the sole argument was consumed as the stem), so `chef.env` always loaded regardless of whether `knife` was installed. This was a regression from commit `d246752` ("fix(chef): correct command dependency check"), which had inverted the fix by removing the `chef` stem argument while `chef.bash`/`chef.zsh` kept the correct two-argument form. Restored to `toolbox_require_commands chef knife`.

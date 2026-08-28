@@ -26,6 +26,12 @@ netinfo
 
 ## Commands
 
+### AI
+
+| Command | Description |
+|---------|-------------|
+| `ollama.update` | Update all installed local Ollama models |
+
 ### AWS
 
 | Command | Description |
