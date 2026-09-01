@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.9"
+# requires-python = ">=3.10"
 # dependencies = [
 #     "requests",
 #     "python-dotenv",
@@ -21,14 +21,14 @@ import json
 import os
 import sys
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any
 
+import pyperclip
 import requests
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.table import Table
-import pyperclip
-from pathlib import Path
 
 # Constants
 _PAGERDUTY_BASE_URL = "https://api.pagerduty.com"
@@ -64,7 +64,7 @@ def load_api_key() -> str:
     return api_key
 
 
-def get_incident_details(incident_id: str, api_key: str) -> Dict[str, Any]:
+def get_incident_details(incident_id: str, api_key: str) -> dict[str, Any]:
     """Fetches incident details from PagerDuty API.
 
     Args:
@@ -95,7 +95,7 @@ def get_incident_details(incident_id: str, api_key: str) -> Dict[str, Any]:
             sys.exit(1)
 
 
-def get_incident_notes(incident_id: str, api_key: str) -> List[Dict[str, Any]]:
+def get_incident_notes(incident_id: str, api_key: str) -> list[dict[str, Any]]:
     """Fetches incident notes from PagerDuty API.
 
     Args:
@@ -125,7 +125,7 @@ def get_incident_notes(incident_id: str, api_key: str) -> List[Dict[str, Any]]:
             return []
 
 
-def get_incident_alerts(incident_id: str, api_key: str) -> List[Dict[str, Any]]:
+def get_incident_alerts(incident_id: str, api_key: str) -> list[dict[str, Any]]:
     """Fetches incident alerts/events from PagerDuty API.
 
     Args:
@@ -155,7 +155,7 @@ def get_incident_alerts(incident_id: str, api_key: str) -> List[Dict[str, Any]]:
             return []
 
 
-def format_datetime(dt_str: Optional[str]) -> str:
+def format_datetime(dt_str: str | None) -> str:
     """Formats datetime string to readable format.
 
     Args:
@@ -198,11 +198,11 @@ def clean_json_payload(payload: Any) -> Any:
 
 
 def extract_incident_info(
-    incident_data: Dict[str, Any],
-    notes: List[Dict[str, Any]],
-    alerts: List[Dict[str, Any]],
-    domain: Optional[str] = None,
-) -> Dict[str, Any]:
+    incident_data: dict[str, Any],
+    notes: list[dict[str, Any]],
+    alerts: list[dict[str, Any]],
+    domain: str | None = None,
+) -> dict[str, Any]:
     """Extracts relevant incident information from API responses.
 
     Args:
@@ -225,9 +225,13 @@ def extract_incident_info(
     if html_url:
         incident_url = html_url
     elif domain:
-        incident_url = f"https://{domain}.pagerduty.com/incidents/{incident.get('id', 'N/A')}"
+        incident_url = (
+            f"https://{domain}.pagerduty.com/incidents/{incident.get('id', 'N/A')}"
+        )
     else:
-        incident_url = f"https://app.pagerduty.com/incidents/{incident.get('id', 'N/A')}"
+        incident_url = (
+            f"https://app.pagerduty.com/incidents/{incident.get('id', 'N/A')}"
+        )
 
     # Extract event details from alerts
     event_details = []
@@ -268,7 +272,7 @@ def extract_incident_info(
     }
 
 
-def format_text_output(info: Dict[str, Any]) -> str:
+def format_text_output(info: dict[str, Any]) -> str:
     """Formats incident information as plain text.
 
     Args:
@@ -325,7 +329,7 @@ def format_text_output(info: Dict[str, Any]) -> str:
     return "\n".join(output)
 
 
-def format_compact_output(info: Dict[str, Any]) -> str:
+def format_compact_output(info: dict[str, Any]) -> str:
     """Formats incident information in compact format for incident tracking.
 
     Args:
@@ -382,7 +386,7 @@ def format_compact_output(info: Dict[str, Any]) -> str:
     return "\n".join(output)
 
 
-def format_markdown_output(info: Dict[str, Any]) -> str:
+def format_markdown_output(info: dict[str, Any]) -> str:
     """Formats incident information as Markdown for Confluence.
 
     Args:
@@ -462,7 +466,7 @@ def format_markdown_output(info: Dict[str, Any]) -> str:
     return "\n".join(output)
 
 
-def format_json_output(info: Dict[str, Any]) -> str:
+def format_json_output(info: dict[str, Any]) -> str:
     """Formats incident information as JSON.
 
     Args:
@@ -515,7 +519,7 @@ def main() -> None:
         "-d",
         default=os.getenv("PAGERDUTY_DOMAIN") or os.getenv("PD_DOMAIN"),
         help="PagerDuty subdomain (e.g. 'mycompany'). Falls back to PAGERDUTY_DOMAIN or PD_DOMAIN env var. "
-             "Only needed if the API response omits html_url.",
+        "Only needed if the API response omits html_url.",
     )
 
     args = parser.parse_args()
