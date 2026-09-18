@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-09-09
+
+- Added `ssm-parameter` CLI script (`scripts/aws/ssm-parameter.sh`) to select and read AWS Systems Manager Parameter Store parameters with `fzf` interactive search or direct lookup, and added documentation in `docs/ssm-parameter.md`
+
 ### 2026-08-28
 
 - Added `ollama.update` CLI script (`scripts/ai/ollama.update.sh`) to update all installed local Ollama models with transient live pull progress output

@@ -44,6 +44,7 @@ netinfo
 | `aws-token-timeout` | AWS session token expiration |
 | `saml2aws-op` | `saml2aws` with 1Password-backed JumpCloud creds |
 | `ssm-connect` | Bubble Tea TUI, then `aws ssm start-session` |
+| `ssm-parameter` | Select and read AWS SSM Parameter Store parameter |
 
 ### Networking
 
