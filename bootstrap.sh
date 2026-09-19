@@ -102,73 +102,12 @@ uv_tool_installs() {
 	done
 }
 
-setup_nvchad() {
-	if ! command -v nvim &>/dev/null; then
-		echo "bootstrap: nvim not found — skipping NvChad setup."
-		return 0
-	fi
-	if [[ -d "$HOME/.config/nvim" ]]; then
-		echo "bootstrap: ~/.config/nvim already exists."
-		echo "bootstrap: replacing it can either back up or permanently delete the existing Neovim config and data."
-		local existing_backups=()
-		[[ -e "$HOME/.config/nvim.bak" || -L "$HOME/.config/nvim.bak" ]] && existing_backups+=("$HOME/.config/nvim.bak")
-		[[ -e "$HOME/.local/share/nvim.bak" || -L "$HOME/.local/share/nvim.bak" ]] && existing_backups+=("$HOME/.local/share/nvim.bak")
-		[[ -e "$HOME/.local/state/nvim.bak" || -L "$HOME/.local/state/nvim.bak" ]] && existing_backups+=("$HOME/.local/state/nvim.bak")
-		[[ -e "$HOME/.cache/nvim.bak" || -L "$HOME/.cache/nvim.bak" ]] && existing_backups+=("$HOME/.cache/nvim.bak")
-		read -r -p "Set up NvChad? [b]ack up, [d]elete without backup, [N] cancel: " ans || true
-		case "$ans" in
-			[bB])
-				if [[ ${#existing_backups[@]} -gt 0 ]]; then
-					echo "bootstrap: these backup paths already exist:"
-					printf '  - %s\n' "${existing_backups[@]}"
-					read -r -p "Permanently remove these old backups and continue? [y/N] " confirm || true
-					case "$confirm" in
-						[yY]|[yY][eE][sS]) rm -rf -- "${existing_backups[@]}" ;;
-						*) echo "bootstrap: skipped NvChad setup."; return 0 ;;
-					esac
-				fi
-				mv "$HOME/.config/nvim" "$HOME/.config/nvim.bak"
-				[[ -d "$HOME/.local/share/nvim" ]] && mv "$HOME/.local/share/nvim" "$HOME/.local/share/nvim.bak"
-				[[ -d "$HOME/.local/state/nvim" ]] && mv "$HOME/.local/state/nvim" "$HOME/.local/state/nvim.bak"
-				[[ -d "$HOME/.cache/nvim" ]] && mv "$HOME/.cache/nvim" "$HOME/.cache/nvim.bak"
-				echo "bootstrap: backed up existing nvim config and data."
-				;;
-			[dD])
-				echo "WARNING: this permanently deletes the current Neovim config, plugins, state, and cache."
-				read -r -p "Delete the current Neovim setup without a backup? [y/N] " confirm || true
-				case "$confirm" in
-					[yY]|[yY][eE][sS])
-						rm -rf -- "$HOME/.config/nvim" "$HOME/.local/share/nvim" "$HOME/.local/state/nvim" "$HOME/.cache/nvim"
-						;;
-					*) echo "bootstrap: skipped NvChad setup."; return 0 ;;
-				esac
-				if [[ ${#existing_backups[@]} -gt 0 ]]; then
-					echo "bootstrap: these backup paths also exist:"
-					printf '  - %s\n' "${existing_backups[@]}"
-					read -r -p "Also permanently remove these existing backups? [y/N] " confirm || true
-					case "$confirm" in
-						[yY]|[yY][eE][sS]) rm -rf -- "${existing_backups[@]}" ;;
-						*) echo "bootstrap: preserving existing nvim backups." ;;
-					esac
-				fi
-				;;
-			*) echo "bootstrap: skipped NvChad setup."; return 0 ;;
-		esac
-	fi
-	echo "bootstrap: cloning Neovim config..."
-	git clone https://github.com/rvwallace/nvim-config.git "$HOME/.config/nvim"
-	echo "bootstrap: installing NvChad plugins, Mason tools, and Tree-sitter parsers..."
-	nvim --headless "+Lazy! sync" "+MasonInstallAll" "+TSInstallAll" +qa
-	echo "bootstrap: NvChad installed."
-}
-
 darwin_bootstrap() {
 	preflight_darwin
 	ensure_toolbox_binary
 	brew_bundle_batch "Toolbox prerequisites" toolbox
 	brew_bundle_batch "Optional usual tools" tools
 	uv_tool_installs
-	setup_nvchad
 	echo "bootstrap: run './toolbox install' to symlink and build commands."
 }
 
@@ -180,7 +119,6 @@ linux_bootstrap() {
 	"$BIN" bootstrap linux-install
 	echo
 	uv_tool_installs
-	setup_nvchad
 	echo "bootstrap: run './toolbox install' to symlink and build commands."
 }
 

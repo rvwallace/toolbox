@@ -9,7 +9,6 @@ brew:
   - duf
   - fd
   - git
-  - neovim
   - ripgrep
   - tmux
   - yazi
@@ -20,7 +19,6 @@ apt_packages:
   - duf
   - fd-find
   - git
-  - neovim
   - ripgrep
   - tmux
   - zsh
@@ -30,7 +28,6 @@ dnf_packages:
   - duf
   - fd-find
   - git
-  - neovim
   - ripgrep
   - tmux
   - zsh
@@ -40,7 +37,6 @@ pacman_packages:
   - duf
   - fd
   - git
-  - neovim
   - ripgrep
   - tmux
   - yazi
