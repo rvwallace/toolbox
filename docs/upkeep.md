@@ -5,6 +5,7 @@
 It detects and manages packages installed across multiple package managers:
 - **Homebrew** (`brew`)
 - **uv tool** (`uv tool`)
+- **npm** (global packages)
 - **Cargo** (`cargo` and `cargo-update`)
 - **Go** (`gup` and `go install`)
 
@@ -16,7 +17,7 @@ Only the package managers currently installed and available in your `$PATH` are 
 
 - **Update All (`--all` / `-a`)**: Updates packages across all detected package managers in one step.
 - **Interactive Update (`--update` / `-u`)**: Queries package managers for outdated packages and presents a multi-select `fzf` menu to choose which ones to update.
-- **Browse and Remove (`--remove` / `-r`)**: Displays all installed packages tagged by ecosystem (`[brew]`, `[uv]`, `[cargo]`, `[go]`), prompts for confirmation, and removes selected packages.
+- **Browse and Remove (`--remove` / `-r`)**: Displays all installed packages tagged by ecosystem (`[brew]`, `[uv]`, `[npm]`, `[cargo]`, `[go]`), prompts for confirmation, and removes selected packages.
 - **Dynamic Detection**: Gracefully handles missing package managers without failing.
 
 ---

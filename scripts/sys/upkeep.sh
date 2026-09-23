@@ -2,7 +2,7 @@
 # toolbox-platforms: linux,darwin
 #
 # upkeep - CLI Tool & Package Manager
-# Manage and update packages across Homebrew, uv, Cargo, and Go.
+# Manage and update packages across Homebrew, uv, npm, Cargo, and Go.
 
 set -euo pipefail
 
@@ -15,14 +15,14 @@ check_prereqs() {
   fi
 
   local active_managers=0
-  for cmd in brew uv cargo go; do
+  for cmd in brew uv npm cargo go; do
     if command -v "${cmd}" &>/dev/null; then
       ((active_managers++)) || true
     fi
   done
 
   if [[ ${active_managers} -eq 0 ]]; then
-    echo "Error: No supported package managers found in PATH (brew, uv, cargo, go)." >&2
+    echo "Error: No supported package managers found in PATH (brew, uv, npm, cargo, go)." >&2
     exit 1
   fi
 
@@ -65,6 +65,10 @@ list_packages() {
     if command -v uv &>/dev/null; then
       uv tool list --outdated 2>/dev/null | awk '/^[a-zA-Z0-9]/ {print "[uv] " $1}' || true
     fi
+    if command -v npm &>/dev/null; then
+      npm outdated --global --depth=0 --json 2>/dev/null |
+        node -e 'let data=""; process.stdin.on("data", chunk => data += chunk).on("end", () => { try { for (const name of Object.keys(JSON.parse(data))) console.log("[npm] " + name); } catch (_) {} });' || true
+    fi
     if command -v cargo &>/dev/null; then
       if command -v cargo-install-update &>/dev/null || cargo install-update --help &>/dev/null 2>&1; then
         cargo install-update -l 2>/dev/null | awk '$NF == "Yes" {print "[cargo] " $1}' || true
@@ -82,6 +86,10 @@ list_packages() {
     if command -v uv &>/dev/null; then
       uv tool list 2>/dev/null | awk '/^[a-zA-Z0-9]/ {print "[uv] " $1}' || true
     fi
+    if command -v npm &>/dev/null; then
+      npm list --global --depth=0 --json 2>/dev/null |
+        node -e 'let data=""; process.stdin.on("data", chunk => data += chunk).on("end", () => { try { for (const name of Object.keys((JSON.parse(data).dependencies) || {})) console.log("[npm] " + name); } catch (_) {} });' || true
+    fi
     if command -v cargo &>/dev/null; then
       cargo install --list 2>/dev/null | awk '/:$/ {sub(/:$/, ""); print "[cargo] " $1}' || true
     fi
@@ -98,7 +106,7 @@ list_packages() {
 
 # Update all packages across all available package managers
 update_all() {
-  local updated=0
+  local updated=0 npm_before npm_after npm_changes
 
   if command -v brew &>/dev/null; then
     echo "==> [brew] Updating Homebrew packages..."
@@ -110,6 +118,24 @@ update_all() {
     [[ ${updated} -eq 1 ]] && echo ""
     echo "==> [uv] Updating uv tools..."
     uv tool upgrade --all || true
+    updated=1
+  fi
+
+  if command -v npm &>/dev/null; then
+    [[ ${updated} -eq 1 ]] && echo ""
+    echo "==> [npm] Updating global packages..."
+    npm_before="$(npm outdated --global --depth=0 --json 2>/dev/null || true)"
+    npm update --global || true
+    npm_after="$(npm outdated --global --depth=0 --json 2>/dev/null || true)"
+    npm_changes="$(node -e 'const before = JSON.parse(process.argv[1] || "{}"); const after = JSON.parse(process.argv[2] || "{}"); for (const name of Object.keys(before)) { const oldVersion = before[name].current || "unknown"; const newVersion = after[name]?.current; if (newVersion !== oldVersion) console.log(name + ": " + oldVersion + " -> " + (newVersion || "no longer outdated")); }' "${npm_before}" "${npm_after}")"
+    if [[ -n "${npm_changes}" ]]; then
+      echo "Updated npm packages:"
+      while IFS= read -r npm_change; do
+        echo "  ${npm_change}"
+      done <<< "${npm_changes}"
+    else
+      echo "No npm packages changed."
+    fi
     updated=1
   fi
 
@@ -166,6 +192,7 @@ browse_remove() {
     case "${mgr}" in
       brew)  brew uninstall "${pkg}" ;;
       uv)    uv tool uninstall "${pkg}" ;;
+      npm)   npm uninstall --global "${pkg}" ;;
       cargo) cargo uninstall "${pkg}" ;;
       go)
         if command -v gup &>/dev/null; then
@@ -198,6 +225,7 @@ interactive_update() {
     case "${mgr}" in
       brew)  brew upgrade "${pkg}" ;;
       uv)    uv tool upgrade "${pkg}" ;;
+      npm)   npm update --global "${pkg}" ;;
       cargo)
         if command -v cargo-install-update &>/dev/null || cargo install-update --help &>/dev/null 2>&1; then
           cargo install-update "${pkg}"
@@ -222,7 +250,7 @@ show_help() {
   cat <<EOF
 Usage: upkeep [OPTIONS]
 
-Interactive CLI tool & package manager for Homebrew, uv, Cargo, and Go.
+Interactive CLI tool & package manager for Homebrew, uv, npm, Cargo, and Go.
 
 Options:
   -a, --all        Update all packages across all detected package managers
