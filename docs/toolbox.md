@@ -73,21 +73,6 @@ Both macOS and Linux bootstrap paths run `uv_tool_installs` after package instal
 
 - `rich-cli`
 
-### NvChad setup
-
-Both macOS and Linux bootstrap paths run `setup_nvchad` after `uv_tool_installs`, but only if `nvim` is on PATH. If `~/.config/nvim` already exists, the user can back it up, delete it without a backup, or cancel the NvChad setup.
-
-Steps performed:
-
-1. Handle an existing Neovim installation:
-   - **Back up:** Move `~/.config/nvim` → `~/.config/nvim.bak`, along with the matching data, state, and cache directories. If backup paths already exist, list them and ask before permanently removing them.
-   - **Delete without backup:** Display a warning and require confirmation before permanently removing the current config, data, state, and cache. If old backup paths exist, list them and separately ask whether to remove or preserve them.
-   - **Cancel:** Leave the existing installation unchanged and skip NvChad setup.
-2. `git clone https://github.com/rvwallace/nvim-config.git ~/.config/nvim`. The standalone repository owns the complete configuration and remains a Git working tree for direct updates.
-3. Run `nvim --headless "+Lazy! sync" "+MasonInstallAll" "+TSInstallAll" +qa` to install plugins, Mason tools, and Tree-sitter parsers.
-
-After bootstrap completes, NvChad is ready to launch with `nvim`.
-
 ## Dependency files (`deps/`)
 
 | File | Purpose |
