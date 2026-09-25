@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-09-25
+
+- Added the `yazi.sh` shell module with a `y` wrapper that changes to Yazi's selected directory on exit; documented the module in `README.md` and `docs/toolbox.md`
+
 ### 2026-09-22
 
 - Added npm global package detection, update-all, interactive updates, and removal to `upkeep`.

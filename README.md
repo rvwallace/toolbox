@@ -177,6 +177,7 @@ After `source shell/init.sh`:
 | `chef.sh` | `chef.env` (set/clear/show/list) |
 | `git.sh` | `git.ignore.add` plus git helper functions |
 | `kube.sh` | `k.env` Kubernetes interactive helper |
+| `yazi.sh` | `y` wrapper that changes to Yazi's selected directory |
 | `sesh.zsh` | `sesh` cached completions |
 | `terraform.sh` | `terraform.plan.save`, `terraform.apply.save`, `tfswitch` auto-switch hook |
 | `tmux.sh` | `tp` popup helper |

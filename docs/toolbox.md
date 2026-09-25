@@ -193,6 +193,7 @@ Examples in this repo:
 - `shell/modules/tmux.sh` defines `tp`; `shell/modules/tmux.zsh` adds zsh completion and keybinding
 - `shell/modules/git.sh` defines `git.ignore.add` and git helper functions; `shell/modules/git.zsh` adds zsh completion
 - `shell/modules/aws.sh` defines `aws.env`; `shell/modules/aws.bash` and `shell/modules/aws.zsh` provide respective cross-shell autocomplete hooks and Starship prompt TTL helpers
+- `shell/modules/yazi.sh` defines `y`, the Yazi wrapper that changes to the directory selected on exit
 - `shell/modules/terraform.sh` defines MR plan helpers (`terraform.plan.save`, …), the `tfswitch` alias, and optional `tf.amd64` for special-case linux/amd64 on Apple Silicon; `terraform.zsh` / `terraform.bash` add `tfswitch` chpwd hooks and completions (see `docs/terraform.md`)
 - `shell/modules/sesh.bash` and `shell/modules/sesh.zsh` load cached generated completions with version-sidecar invalidation
 
