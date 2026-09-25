@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-09-25
 
+- Added Nushell companion modules (`shell/init.nu` and `shell/modules/{aws,kube,chef,git,tmux,yazi,terraform}.nu`) providing native `def --env` implementations for environment switchers (AWS, Kubernetes, Chef), aliases, and shell helpers
 - Added the `yazi.sh` shell module with a `y` wrapper that changes to Yazi's selected directory on exit; documented the module in `README.md` and `docs/toolbox.md`
 
 ### 2026-09-22
