@@ -18,7 +18,8 @@ import os
 import re
 import shlex
 import json
-from datetime import date, datetime
+import sys
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Iterable, Any
@@ -33,6 +34,7 @@ from rich.table import Table
 import typer
 
 console = Console()
+error_console = Console(stderr=True)
 app = typer.Typer(help="EC2 utilities.")
 
 
@@ -67,7 +69,7 @@ def resolve_profile(profile: str | None) -> str:
     """Return the AWS profile or exit when missing."""
     resolved = profile or os.environ.get("AWS_PROFILE")
     if not resolved:
-        console.print("[red]Set an AWS profile via --profile or AWS_PROFILE.[/red]")
+        error_console.print("[red]Set an AWS profile via --profile or AWS_PROFILE.[/red]")
         raise typer.Exit(1)
     return resolved
 
@@ -76,7 +78,7 @@ def resolve_region(region: str | None) -> str:
     """Return the AWS region or exit when missing."""
     resolved = region or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
     if not resolved:
-        console.print("[red]Set an AWS region via --region, AWS_REGION, or AWS_DEFAULT_REGION.[/red]")
+        error_console.print("[red]Set an AWS region via --region, AWS_REGION, or AWS_DEFAULT_REGION.[/red]")
         raise typer.Exit(1)
     return resolved
 
@@ -205,11 +207,12 @@ def instance_name(instance: dict) -> str:
     """Return the Name tag value if present."""
     for tag in instance.get("Tags", []):
         if tag.get("Key") == "Name":
-            return str(tag.get("Value", ""))
+            value = tag.get("Value")
+            return str(value) if value is not None else ""
     return ""
 
 
-def instance_os(instance: dict) -> str:
+def instance_os(instance: dict) -> str | None:
     """Return a short OS label based on platform details."""
     platform_details = instance.get("PlatformDetails")
     if platform_details:
@@ -217,15 +220,15 @@ def instance_os(instance: dict) -> str:
     platform = instance.get("Platform")
     if platform:
         return str(platform)
-    return "Unknown"
+    return None
 
 
-def instance_iam_role(instance: dict) -> str:
+def instance_iam_role(instance: dict) -> str | None:
     """Return the IAM role name from the instance profile ARN."""
     profile = instance.get("IamInstanceProfile") or {}
     arn = profile.get("Arn") if isinstance(profile, dict) else None
     if not arn:
-        return ""
+        return None
     return arn.rsplit("/", 1)[-1]
 
 
@@ -245,6 +248,66 @@ def instance_security_groups(instance: dict) -> str:
     return ", ".join(formatted)
 
 
+def instance_launch_time(instance: dict) -> str | None:
+    """Return LaunchTime as a UTC RFC3339 timestamp."""
+    launch_time = instance.get("LaunchTime")
+    if launch_time is None:
+        return None
+    if isinstance(launch_time, datetime):
+        timestamp = launch_time
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=UTC)
+        return timestamp.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return str(launch_time)
+
+
+def normalized_instance(instance: dict) -> dict[str, Any]:
+    """Return the canonical structured-output record for an EC2 instance."""
+    tags = {
+        str(tag["Key"]): str(tag.get("Value", ""))
+        for tag in instance.get("Tags", [])
+        if tag.get("Key") is not None
+    }
+    security_groups = [
+        {"id": group.get("GroupId"), "name": group.get("GroupName")}
+        for group in instance.get("SecurityGroups", [])
+    ]
+    placement = instance.get("Placement") or {}
+    state = instance.get("State") or {}
+
+    return {
+        "instance_id": instance.get("InstanceId", ""),
+        "name": tags.get("Name"),
+        "state": state.get("Name", ""),
+        "instance_type": instance.get("InstanceType", ""),
+        "os": instance_os(instance),
+        "architecture": instance.get("Architecture"),
+        "image_id": instance.get("ImageId"),
+        "availability_zone": placement.get("AvailabilityZone"),
+        "key_name": instance.get("KeyName"),
+        "iam_role": instance_iam_role(instance),
+        "private_ip": instance.get("PrivateIpAddress"),
+        "private_dns_name": instance.get("PrivateDnsName"),
+        "public_ip": instance.get("PublicIpAddress"),
+        "vpc_id": instance.get("VpcId"),
+        "subnet_id": instance.get("SubnetId"),
+        "security_groups": security_groups,
+        "launch_time": instance_launch_time(instance),
+        "tags": tags,
+    }
+
+
+def print_json(value: Any) -> None:
+    """Write one canonical JSON value to stdout."""
+    json.dump(value, sys.stdout, indent=2)
+    sys.stdout.write("\n")
+
+
+def print_diagnostic(message: str, *, machine_mode: bool = False) -> None:
+    """Write a diagnostic without contaminating machine-readable stdout."""
+    (error_console if machine_mode else console).print(message)
+
+
 def build_instance_row(instance: dict) -> list[str]:
     """Return formatted row fields for list output."""
     return [
@@ -252,7 +315,7 @@ def build_instance_row(instance: dict) -> list[str]:
         instance.get("InstanceId", ""),
         instance.get("State", {}).get("Name", ""),
         instance.get("InstanceType", ""),
-        instance_os(instance),
+        instance_os(instance) or "Unknown",
         instance.get("KeyName", ""),
         instance.get("PublicIpAddress", "") or "",
         instance.get("PrivateIpAddress", "") or "",
@@ -273,6 +336,11 @@ def list_instances(
         "--state",
         help="Filter by instance-state-name (running, stopped, pending, etc.).",
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit canonical normalized JSON.",
+    ),
 ) -> None:
     """List EC2 instances in a table."""
     state_obj = ctx.ensure_object(AppState)
@@ -285,15 +353,20 @@ def list_instances(
     try:
         client = create_ec2_client(profile=state_obj.profile, region=state_obj.region)
     except Exception as exc:  # pragma: no cover - boto initialization errors
-        console.print(f"[red]Could not build EC2 client:[/red] {exc}")
+        print_diagnostic(f"[red]Could not build EC2 client:[/red] {exc}", machine_mode=json_output)
         raise typer.Exit(1) from exc
 
-    with console.status("Fetching instances...", spinner="dots"):
+    status_console = error_console if json_output else console
+    with status_console.status("Fetching instances...", spinner="dots"):
         try:
             instances = collect_instances(client, filters=filters)
         except (RuntimeError, BotoCoreError, ClientError) as exc:
-            console.print(f"[red]EC2 lookup failed:[/red] {exc}")
+            print_diagnostic(f"[red]EC2 lookup failed:[/red] {exc}", machine_mode=json_output)
             raise typer.Exit(1) from exc
+
+    if json_output:
+        print_json([normalized_instance(instance) for instance in instances])
+        return
 
     if not instances:
         console.print("[yellow]No instances found.[/yellow]")
@@ -332,15 +405,24 @@ def describe_instance(
         show_choices=True,
         show_default=True,
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit one canonical normalized JSON object.",
+    ),
 ) -> None:
     """Show raw EC2 instance details as JSON."""
     state_obj = ctx.ensure_object(AppState)
     use_id_lookup = INSTANCE_ID_PATTERN.match(identifier) is not None
 
+    if json_output and output_format.lower() != "table":
+        print_diagnostic("--json cannot be combined with --format json or --format yaml", machine_mode=True)
+        raise typer.Exit(2)
+
     try:
         client = create_ec2_client(profile=state_obj.profile, region=state_obj.region)
     except Exception as exc:  # pragma: no cover - boto initialization errors
-        console.print(f"[red]Could not build EC2 client:[/red] {exc}")
+        print_diagnostic(f"[red]Could not build EC2 client:[/red] {exc}", machine_mode=json_output)
         raise typer.Exit(1) from exc
 
     if use_id_lookup:
@@ -348,20 +430,30 @@ def describe_instance(
     else:
         describe_kwargs = {"Filters": [{"Name": "tag:Name", "Values": [f"*{identifier}*"]}]}
 
-    with console.status("Fetching instance details...", spinner="dots"):
+    status_console = error_console if json_output else console
+    with status_console.status("Fetching instance details...", spinner="dots"):
         try:
             # IAM actions: ec2:DescribeInstances
             response = client.describe_instances(**describe_kwargs)
             instances = list(iter_instances(response))
         except (RuntimeError, BotoCoreError, ClientError) as exc:
-            console.print(f"[red]EC2 lookup failed:[/red] {exc}")
+            print_diagnostic(f"[red]EC2 lookup failed:[/red] {exc}", machine_mode=json_output)
             raise typer.Exit(1) from exc
 
     if not instances:
-        console.print(f"[yellow]No instances found for '{identifier}'.[/yellow]")
+        print_diagnostic(
+            f"[yellow]No instances found for '{identifier}'.[/yellow]",
+            machine_mode=json_output,
+        )
         raise typer.Exit(1)
 
     if len(instances) > 1 and not use_id_lookup:
+        if json_output:
+            print_diagnostic(
+                f"[yellow]Multiple matches for '{identifier}'. Refine the name filter or use an instance id.[/yellow]",
+                machine_mode=True,
+            )
+            raise typer.Exit(1)
         summary = Table("Name", "Id", "State", "Type")
         for instance in instances:
             summary.add_row(
@@ -379,13 +471,17 @@ def describe_instance(
     instance = instances[0]
     fmt = output_format.lower()
 
+    if json_output:
+        print_json(normalized_instance(instance))
+        return
+
     if fmt == "table":
         summary = Table(show_header=False, title="EC2 instance")
         summary.add_row("Name", instance_name(instance))
         summary.add_row("Id", instance.get("InstanceId", ""))
         summary.add_row("State", instance.get("State", {}).get("Name", ""))
         summary.add_row("Type", instance.get("InstanceType", ""))
-        summary.add_row("OS", instance_os(instance))
+        summary.add_row("OS", instance_os(instance) or "Unknown")
         summary.add_row("AMI", instance.get("ImageId", ""))
         summary.add_row("AZ", instance.get("Placement", {}).get("AvailabilityZone", ""))
         summary.add_row("Key", instance.get("KeyName", ""))

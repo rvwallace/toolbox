@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-09-27
+
+- Added canonical normalized JSON output to `aws-ec2 list --json` and `aws-ec2 describe TARGET --json`, while preserving human output and legacy `--format json|yaml` representations
+
 ### 2026-09-25
 
 - Added native Nushell EC2 helpers in `shell/modules/aws.nu` (`aws.ec2`, `aws.ec2-key`, and `aws-ec2-nu` alias) returning typed instance tables with tag records for easy pipeline filtering
