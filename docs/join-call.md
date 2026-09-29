@@ -1,6 +1,6 @@
 # join-call
 
-Textual TUI that lists **Microsoft Teams** meeting deeplinks from a TOML file and opens the selected link with **`open`** on macOS.
+Textual TUI that lists **Microsoft Teams** meeting deeplinks from a TOML file and opens the selected link with the platform's default URL handler.
 
 **Source:** `scripts/productivity/join-call.py`  
 **After install:** `join-call`
@@ -28,12 +28,13 @@ Rules enforced when loading:
 
 ## TUI keys
 
-- **Enter:** open the selected deeplink (`open` on macOS)
+- **Enter:** open the selected deeplink (`open` on macOS, `xdg-open` on Linux)
 - **q:** quit
 
 ## Requirements
 
-- macOS (uses `/usr/bin/open` for Teams)
+- macOS (`open` for Teams)
+- Linux (`xdg-open` for Teams)
 - Python dependency: **textual** (see PEP 723 block in the script)
 
 ## Scenarios
@@ -41,4 +42,4 @@ Rules enforced when loading:
 - **Edit once:** copy your Teams links from Outlook or Teams (deeplink format) into `teams-calls.toml` with readable `name` values.
 - **Run:** `join-call`, move with arrow keys, Enter to join.
 
-This tool does not run on Linux or Windows unless you change the script to use a different launcher than `open`.
+Windows is not supported because the toolbox does not provide a Windows URL-launcher adapter.

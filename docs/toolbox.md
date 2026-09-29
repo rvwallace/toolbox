@@ -156,7 +156,7 @@ toolboxctl list                 # same as toolbox shell list
 toolboxctl install              # forwards to bin/toolbox install
 ```
 
-Subcommands `disable`, `enable`, `list`, `path`, and `effective` map to `toolbox shell …`. In practice, `effective` is mostly internal; use `list` unless you specifically want the raw disabled stem list. Anything else is passed through (`install`, `clean`, `deps scan`, …).
+Subcommands `disable`, `enable`, `list`, `path`, and `effective` map to `toolbox shell …`. In practice, `effective` is mostly internal; use `list` unless you specifically want the raw disabled stem list. Anything else is passed through (`install`, `clean`, `deps scan`, …). `shell/init.nu` exports the same adapter as a Nushell command; its `-t` mode updates the current Nushell environment. Nushell refreshes dependency status before `toolboxctl` runs, so `toolboxctl list` reports missing commands instead of treating every imported module as loaded. Nushell cannot re-source its importing module graph from inside the adapter, so `-r` prints the command needed to re-import the Toolbox init file.
 
 ### `toolbox shell list` columns
 
@@ -183,9 +183,22 @@ Toolbox shell modules use a companion-file pattern when a helper needs shell-spe
 - Put zsh-only widgets, keybindings, and completions in `shell/modules/*.zsh`
 - Put bash-only widgets, keybindings, and completions in `shell/modules/*.bash` (**Note**: requires Bash v4+; macOS users should update via `brew install bash`)
 - Keep toolbox-owned completions beside the toolbox helper they complete
-- For generated completion scripts, cache them under `~/.cache/silentcastle/toolbox/completions/` and store a sidecar version file
+- For generated completion scripts, cache them under `${XDG_CACHE_HOME:-~/.cache}/silentcastle/toolbox/completions/` and store a sidecar version file
 - Use `toolbox_completion_cache_ensure <cache_file> <version_file> <current_version> <generator...>` from `shell/init.sh` to refresh cache only when needed
 - Keep module load paths silent (no startup `echo`); fail soft if completion generation is unavailable
+
+### Nushell loading
+
+Load `shell/init.nu` from a private local Nushell configuration file, such as
+`post.nu`, with an absolute path to this checkout:
+
+```nu
+use /path/to/toolbox/shell/init.nu *
+```
+
+Keep that machine-specific path out of shared `env.nu`. The Nushell Terraform
+adapter resolves its Bash helper from the toolbox module location, so the
+checkout does not need to be next to `sc-nu`.
 
 Examples in this repo:
 

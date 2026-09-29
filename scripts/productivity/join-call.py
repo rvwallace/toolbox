@@ -5,13 +5,13 @@
 #     "textual>=0.50.0",
 # ]
 # ///
-# toolbox-platforms: darwin
+# toolbox-platforms: linux,darwin
 
 """
 A Textual-based TUI for joining Microsoft Teams calls via deeplinks.
 
 This script displays a list of preconfigured Teams meeting deeplinks and
-allows you to quickly launch them via macOS's `open` command. The deeplinks
+allows you to quickly launch them with the platform's default URL handler. The deeplinks
 are stored in a TOML configuration file at:
 
     ~/.config/silentcastle/teams-calls.toml
@@ -34,17 +34,17 @@ Author: Robert Wallace <rwallace@silentcastle.net>
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
-import tomllib
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
+import tomllib
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import DataTable, Footer, Header
-
 
 ###############################################################################
 # Data structures
@@ -171,10 +171,36 @@ def abbreviate(link: str, width: int = 56) -> str:
     return link if len(link) <= width else link[: width - 1] + "…"
 
 
+def launcher_for_platform(platform: str) -> str | None:
+    """Return the URL launcher for a supported platform."""
+    if platform == "darwin":
+        return "open"
+    if platform.startswith("linux"):
+        return "xdg-open"
+    return None
+
+
 def launch_call(call: Call) -> None:
-    """Launch a Teams call using macOS open command."""
+    """Launch a Teams call with the platform's default URL handler."""
+    launcher = launcher_for_platform(sys.platform)
+    if launcher is None:
+        print(
+            f"Cannot launch {call.name}: unsupported platform {sys.platform!r} "
+            "(supported: macOS and Linux)",
+            file=sys.stderr,
+        )
+        return
+
+    if shutil.which(launcher) is None:
+        print(
+            f"Cannot launch {call.name}: required launcher {launcher!r} "
+            "was not found on PATH",
+            file=sys.stderr,
+        )
+        return
+
     try:
-        subprocess.run(["open", call.deeplink], check=False)
+        subprocess.run([launcher, call.deeplink], check=False)
     except Exception as e:
         print(f"Failed to launch {call.name}: {e}", file=sys.stderr)
 

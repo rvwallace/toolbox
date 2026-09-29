@@ -1,5 +1,7 @@
 # Terraform shell helpers for Nushell
 
+const TOOLBOX_ROOT = (path self | path dirname | path dirname | path dirname)
+
 export alias tfswitch = tfswitch -b $"($env.HOME)/.local/bin/terraform"
 
 # Save a plan to TF_PLANS_DIR with timestamp and show summary
@@ -8,7 +10,7 @@ export def --env "terraform.plan.save" [
     --no-sensitive
     ...plan_args: string
 ] {
-    let script = ($env.HOME | path join "silentcastle/projects/toolbox/shell/modules/terraform.sh")
+    let script = ($TOOLBOX_ROOT | path join "shell/modules/terraform.sh")
     if not ($script | path exists) {
         print -e $"terraform.plan.save: script not found at ($script)"
         return 1
@@ -26,7 +28,7 @@ export def --env "terraform.plan.save" [
 export def --env "terraform.apply.last" [
     --yes
 ] {
-    let script = ($env.HOME | path join "silentcastle/projects/toolbox/shell/modules/terraform.sh")
+    let script = ($TOOLBOX_ROOT | path join "shell/modules/terraform.sh")
     if not ($script | path exists) {
         print -e $"terraform.apply.last: script not found at ($script)"
         return 1

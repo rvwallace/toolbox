@@ -25,7 +25,7 @@ Examples:
   op.toclipboard.sh "JumpCloud" custom "MFA Token"
 
 The command requires the 1Password CLI (`op`) and a clipboard utility
-such as pbcopy (macOS), xclip (Linux), or clip (Windows).
+such as pbcopy (macOS), wl-copy or xclip (Linux), or clip (Windows).
 EOF
 }
 
@@ -44,12 +44,14 @@ copy_to_clipboard() {
   local data="$1"
   if command -v pbcopy >/dev/null 2>&1; then
     printf '%s' "$data" | pbcopy
+  elif command -v wl-copy >/dev/null 2>&1; then
+    printf '%s' "$data" | wl-copy
   elif command -v xclip >/dev/null 2>&1; then
     printf '%s' "$data" | xclip -selection clipboard
   elif command -v clip >/dev/null 2>&1; then
     printf '%s' "$data" | clip
   else
-    error "No supported clipboard utility found (pbcopy, xclip, clip)"
+    error "No supported clipboard utility found (pbcopy, wl-copy, xclip, clip)"
   fi
 }
 

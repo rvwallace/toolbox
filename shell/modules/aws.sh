@@ -53,7 +53,7 @@ _aws_get_profiles_cache() {
   local stat_fmt="-f %m"
   [[ "$(uname)" == "Linux" ]] && stat_fmt="-c %Y"
 
-  local cache_dir="${HOME}/.cache/silentcastle"
+  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/silentcastle"
   local cache_file="${cache_dir}/aws.profiles.cache"
   local cache_age_days="${SC_AWS_CACHE_DAYS:-30}"
 

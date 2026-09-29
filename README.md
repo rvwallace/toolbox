@@ -5,11 +5,11 @@ Personal command-line tools in one repo: shell scripts, Python CLIs (PEP 723 + `
 ## Quick start
 
 ```bash
-cd ~/toolbox
+cd /path/to/toolbox
 ./toolbox install
 
 # Shell (add to ~/.zshrc or ~/.bashrc)
-source ~/toolbox/shell/init.sh
+source /path/to/toolbox/shell/init.sh
 
 aws-ec2 list
 cert-check example.com
@@ -94,7 +94,7 @@ netinfo
 
 | Command | Description |
 |---------|-------------|
-| `join-call` | Textual TUI for Teams deeplinks (macOS) |
+| `join-call` | Textual TUI for Teams deeplinks (macOS/Linux) |
 
 ### GitHub
 

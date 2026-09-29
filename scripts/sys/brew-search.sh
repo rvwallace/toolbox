@@ -75,7 +75,7 @@ readonly EXIT_MISSING_DEPS=2
 readonly EXIT_INVALID_ARGS=3
 
 # Cache configuration
-readonly CACHE_DIR="${HOME}/.cache/silentcastle"
+readonly CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/silentcastle"
 readonly CACHE_FILE="${CACHE_DIR}/brew-search.cache"
 readonly CACHE_TTL_SECONDS=86400 # 24 hours
 

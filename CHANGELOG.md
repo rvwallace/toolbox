@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-09-29
+
+- Added Linux support to `join-call` using `xdg-open`; added `wl-copy` support to `op-clip`; made shared caches and the Linux font installer honor XDG directories; removed a hardcoded toolbox path from the Nushell Terraform adapter
+- Added a Nushell `toolboxctl` adapter with temporary environment overrides, dependency status reporting, and Nushell reload guidance
+
 ### 2026-09-27
 
 - Added canonical normalized JSON output to `aws-ec2 list --json` and `aws-ec2 describe TARGET --json`, while preserving human output and legacy `--format json|yaml` representations

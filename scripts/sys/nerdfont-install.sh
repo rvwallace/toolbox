@@ -98,7 +98,7 @@ function linux() {
     fi
     msg:success "Selected font: $selected_font"
 
-    local install_dir="$HOME/.local/share/fonts"
+    local install_dir="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
     mkdir -p "$install_dir"
 
     status:info "Installing $selected_font\n"
