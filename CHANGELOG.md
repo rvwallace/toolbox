@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-01
+
+- Updated Nushell Git helpers with parameterized structured logs, status, branch, changed-file, stash, and recent-branch views, plus `git.log-graph` for visual history
+
 ### 2026-09-30
 
 - Added Fedora (`dnf`), Debian/Ubuntu (`apt-get`), and Arch (`pacman`) package management to `upkeep`, including update-all, interactive updates, and removal of user-installed packages
