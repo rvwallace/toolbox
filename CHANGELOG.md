@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-09-30
+
+- Added Fedora (`dnf`), Debian/Ubuntu (`apt-get`), and Arch (`pacman`) package management to `upkeep`, including update-all, interactive updates, and removal of user-installed packages
+
 ### 2026-09-29
 
 - Added Linux support to `join-call` using `xdg-open`; added `wl-copy` support to `op-clip`; made shared caches and the Linux font installer honor XDG directories; removed a hardcoded toolbox path from the Nushell Terraform adapter

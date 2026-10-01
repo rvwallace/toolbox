@@ -2,7 +2,7 @@
 # toolbox-platforms: linux,darwin
 #
 # upkeep - CLI Tool & Package Manager
-# Manage and update packages across Homebrew, uv, npm, Cargo, and Go.
+# Manage and update packages across system and developer package managers.
 
 set -euo pipefail
 
@@ -15,14 +15,14 @@ check_prereqs() {
   fi
 
   local active_managers=0
-  for cmd in brew uv npm cargo go; do
+  for cmd in brew dnf apt-get pacman uv npm cargo go; do
     if command -v "${cmd}" &>/dev/null; then
       ((active_managers++)) || true
     fi
   done
 
   if [[ ${active_managers} -eq 0 ]]; then
-    echo "Error: No supported package managers found in PATH (brew, uv, npm, cargo, go)." >&2
+    echo "Error: No supported package managers found in PATH (brew, dnf, apt-get, pacman, uv, npm, cargo, go)." >&2
     exit 1
   fi
 
@@ -54,6 +54,18 @@ check_prereqs() {
   fi
 }
 
+# Run a system package manager with the privileges it requires.
+run_privileged() {
+  if [[ ${EUID} -eq 0 ]]; then
+    "$@"
+  elif command -v sudo &>/dev/null; then
+    sudo "$@"
+  else
+    echo "Error: sudo is required to manage system packages." >&2
+    return 1
+  fi
+}
+
 # List installed or outdated packages across available package managers ($1: "all" or "outdated")
 list_packages() {
   local mode="${1:-all}" gp
@@ -61,6 +73,17 @@ list_packages() {
   if [[ "${mode}" == "outdated" ]]; then
     if command -v brew &>/dev/null; then
       brew outdated -q 2>/dev/null | awk '{print "[brew] " $0}' || true
+    fi
+    if command -v dnf &>/dev/null; then
+      dnf check-update --quiet 2>/dev/null |
+        awk 'NF >= 3 && $1 !~ /^(Last|Obsoleting)/ {print "[dnf] " $1}' || true
+    fi
+    if command -v apt-get &>/dev/null; then
+      apt list --upgradable 2>/dev/null |
+        awk -F/ 'NR > 1 && NF > 1 {print "[apt] " $1}' || true
+    fi
+    if command -v pacman &>/dev/null; then
+      pacman -Qu 2>/dev/null | awk '{print "[pacman] " $1}' || true
     fi
     if command -v uv &>/dev/null; then
       uv tool list --outdated 2>/dev/null | awk '/^[a-zA-Z0-9]/ {print "[uv] " $1}' || true
@@ -82,6 +105,16 @@ list_packages() {
   else
     if command -v brew &>/dev/null; then
       brew leaves -r 2>/dev/null | awk '{print "[brew] " $0}' || true
+    fi
+    if command -v dnf &>/dev/null; then
+      dnf repoquery --userinstalled --qf '%{name}' 2>/dev/null |
+        sort -u | awk '{print "[dnf] " $0}' || true
+    fi
+    if command -v apt-get &>/dev/null; then
+      apt-mark showmanual 2>/dev/null | awk '{print "[apt] " $0}' || true
+    fi
+    if command -v pacman &>/dev/null; then
+      pacman -Qeq 2>/dev/null | awk '{print "[pacman] " $0}' || true
     fi
     if command -v uv &>/dev/null; then
       uv tool list 2>/dev/null | awk '/^[a-zA-Z0-9]/ {print "[uv] " $1}' || true
@@ -111,6 +144,28 @@ update_all() {
   if command -v brew &>/dev/null; then
     echo "==> [brew] Updating Homebrew packages..."
     brew upgrade || true
+    updated=1
+  fi
+
+  if command -v dnf &>/dev/null; then
+    [[ ${updated} -eq 1 ]] && echo ""
+    echo "==> [dnf] Updating Fedora packages..."
+    run_privileged dnf upgrade || true
+    updated=1
+  fi
+
+  if command -v apt-get &>/dev/null; then
+    [[ ${updated} -eq 1 ]] && echo ""
+    echo "==> [apt] Updating Debian/Ubuntu packages..."
+    run_privileged apt-get update || true
+    run_privileged apt-get upgrade || true
+    updated=1
+  fi
+
+  if command -v pacman &>/dev/null; then
+    [[ ${updated} -eq 1 ]] && echo ""
+    echo "==> [pacman] Updating Arch packages..."
+    run_privileged pacman -Syu || true
     updated=1
   fi
 
@@ -191,6 +246,9 @@ browse_remove() {
     echo "--> Uninstalling [${mgr}] ${pkg}..."
     case "${mgr}" in
       brew)  brew uninstall "${pkg}" ;;
+      dnf)   run_privileged dnf remove "${pkg}" ;;
+      apt)   run_privileged apt-get remove "${pkg}" ;;
+      pacman) run_privileged pacman -R "${pkg}" ;;
       uv)    uv tool uninstall "${pkg}" ;;
       npm)   npm uninstall --global "${pkg}" ;;
       cargo) cargo uninstall "${pkg}" ;;
@@ -224,6 +282,9 @@ interactive_update() {
     echo "--> Updating [${mgr}] ${pkg}..."
     case "${mgr}" in
       brew)  brew upgrade "${pkg}" ;;
+      dnf)   run_privileged dnf upgrade "${pkg}" ;;
+      apt)   run_privileged apt-get install --only-upgrade "${pkg}" ;;
+      pacman) run_privileged pacman -S "${pkg}" ;;
       uv)    uv tool upgrade "${pkg}" ;;
       npm)   npm update --global "${pkg}" ;;
       cargo)
@@ -250,7 +311,7 @@ show_help() {
   cat <<EOF
 Usage: upkeep [OPTIONS]
 
-Interactive CLI tool & package manager for Homebrew, uv, npm, Cargo, and Go.
+Interactive CLI tool & package manager for Homebrew, dnf, apt, pacman, uv, npm, Cargo, and Go.
 
 Options:
   -a, --all        Update all packages across all detected package managers
