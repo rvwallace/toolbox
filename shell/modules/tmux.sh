@@ -5,6 +5,9 @@
 toolbox_require_commands tmux tmux || return 0
 toolbox_require_tmux_session tmux || return 0
 
+# Start a session without restoring the last tmux-resurrect snapshot.
+alias tmux.new='command rm -f -- "${XDG_DATA_HOME:-$HOME/.local/share}/tmux/resurrect/last" && tmux'
+
 tp() {
     local exit_flag="-E"
 

@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-15
+
+- Added the `tmux.new` shell alias to start tmux without restoring the last tmux-resurrect snapshot
+
 ### 2026-10-01
 
 - Updated Nushell Git helpers with parameterized structured logs, status, branch, changed-file, stash, and recent-branch views, plus `git.log-graph` for visual history
