@@ -263,10 +263,12 @@ _refresh_cache() {
 	local tmp="${CACHE_FILE}.tmp.$$"
 	local err="${CACHE_FILE}.err.$$"
 	local refresh_status=0
-	local had_warnings=0
 
 	set +e
-	brew search --eval-all --desc "" 2>"${err}" | sed -e '/^==>/d' >"${tmp}"
+	# Homebrew 7 disables --eval-all. Description search already covers trusted
+	# taps; an empty regex lists every formula and cask. Section headers and the
+	# blank line between formulae and casks are not package rows.
+	brew search --desc '//' 2>"${err}" | sed -e '/^==>/d' -e '/^$/d' >"${tmp}"
 	refresh_status=$?
 	set -e
 
@@ -275,18 +277,24 @@ _refresh_cache() {
 	if [[ -s "${tmp}" ]]; then
 		mv "${tmp}" "${CACHE_FILE}"
 		if [[ ${refresh_status} -ne 0 ]]; then
-			had_warnings=1
-			_log_warn "Cache refreshed with Homebrew warnings; check brew search --eval-all --desc \"\" for details"
+			_log_warn "Cache refreshed with Homebrew warnings; check: brew search --desc //"
 		fi
 		_log_debug "Cache refreshed: ${CACHE_FILE}"
 		rm -f "${err}"
 		return 0
-	else
-		rm -f "${tmp}"
-		rm -f "${err}"
-		_log_warn "Cache refresh failed; results may be stale"
-		return 1
 	fi
+
+	local reason=""
+	if [[ -s "${err}" ]]; then
+		reason="$(grep -v '^$' "${err}" | tail -n 1 || true)"
+	fi
+	rm -f "${tmp}" "${err}"
+	if [[ -n "${reason}" ]]; then
+		_log_warn "Cache refresh failed (${reason}); results may be stale"
+	else
+		_log_warn "Cache refresh failed; results may be stale"
+	fi
+	return 1
 }
 
 # Return the package list — from cache when valid, otherwise fetch fresh.
@@ -342,8 +350,16 @@ brew_fzf_search() {
 	local install_command="echo '==> Attempt to install {1}. Confirm with y/n: '; read -r key && [[ \$key == [yY] ]] && (brew install {1} && echo 'Installation completed successfully' || echo 'Installation failed') && read -n 1 -r -p 'Press any key to continue...' key"
 	local uninstall_command="echo '==> Attempt to uninstall {1}. Confirm with y/n: '; read -r key && [[ \$key == [yY] ]] && (brew uninstall {1} && echo 'Uninstallation completed successfully' || echo 'Uninstallation failed') && read -n 1 -r -p 'Press any key to continue...' key"
 
+	# Load the list before fzf starts. Status lines written while fzf is waiting
+	# on this pipe land on the prompt row.
+	local package_list
+	if ! package_list="$(_get_package_list "${force_refresh}")"; then
+		_log_error "Could not load the Homebrew package list"
+		return ${EXIT_FAILURE}
+	fi
+
 	# Execute fzf with comprehensive error handling
-	selected=$(SHELL="${shell_cmd}" _get_package_list "${force_refresh}" |
+	selected=$(SHELL="${shell_cmd}" printf '%s\n' "${package_list}" |
 		fzf \
 			-d ':' \
 			--query="${initial_query}" \

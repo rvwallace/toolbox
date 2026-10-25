@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-25
+
+- Fixed `brew-search` cache refresh for Homebrew 7, which disables `brew search --eval-all`. The package list now loads before fzf opens, so a refresh warning no longer lands on the search prompt.
+
 ### 2026-10-15
 
 - Added the `tmux.new` shell alias to start tmux without restoring the last tmux-resurrect snapshot
