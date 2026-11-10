@@ -89,6 +89,7 @@ netinfo
 |---------|-------------|
 | `ssh-sc` | Interactive SSH key and host helper; see [`docs/ssh-sc.md`](docs/ssh-sc.md) |
 | `tssh` | Open SSH connections in a dedicated local tmux session; see [`docs/tssh.md`](docs/tssh.md) |
+| `rex-ssh` | Open SSH in local Rex tabs/splits with recent history, SSH alias picker and reconnect; see [`docs/rex-ssh.md`](docs/rex-ssh.md) |
 
 ### Productivity
 

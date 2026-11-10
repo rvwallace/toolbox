@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-11-10
+
+- Added `rex-ssh` for ordinary SSH in local Rex tabs/splits, with an fzf recent/SSH-alias picker, private destination-only history, `$EDITOR` editing, pins/tags/expiry, duplicate-tab selection, reconnect, and optional Rex desktop notifications. No remote Rex installation is required. Extra SSH options are passed without storing their argument vectors.
+
 ### 2026-10-25
 
 - Fixed `brew-search` cache refresh for Homebrew 7, which disables `brew search --eval-all`. The package list now loads before fzf opens, so a refresh warning no longer lands on the search prompt.
