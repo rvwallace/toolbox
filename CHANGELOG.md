@@ -8,6 +8,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-11-10
 
+- Extended `rex-ssh` with validated SSH-parameter history/replay (including JumpCloud identity files), connection tags, exact app tab-selection requests, and live same-host splitting through private local IPC. The companion Rex module supports SSH-aware Cmd+d/Shift+Cmd+d with local-pane fallback; no-store connections keep their arguments out of persistent helper state.
+
 - Added `rex-ssh` for ordinary SSH in local Rex tabs/splits, with an fzf recent/SSH-alias picker, private destination-only history, `$EDITOR` editing, pins/tags/expiry, duplicate-tab selection, reconnect, and optional Rex desktop notifications. No remote Rex installation is required. Extra SSH options are passed without storing their argument vectors.
 
 ### 2026-10-25

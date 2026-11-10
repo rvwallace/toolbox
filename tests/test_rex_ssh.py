@@ -16,6 +16,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/ssh/rex-ssh.py"
 SESSION = "session:11111111-1111-7111-8111-111111111111"
 WINDOW = "window:22222222-2222-7222-8222-222222222222"
 BLOCK = "block:33333333-3333-7333-8333-333333333333"
+CLIENT = "client:44444444-4444-7444-8444-444444444444"
 
 
 class RexSshCliTests(unittest.TestCase):
@@ -74,9 +75,21 @@ elif args[:2] == ['window', 'new'] or args[:1] == ['split']:
     if s.get('create_error'):
         print('fixture create failed', file=sys.stderr)
         sys.exit(1)
-    print(json.dumps({'block_ids': [s['block']], 'window_id': s['window']}))
+    response = {'block_ids': [s['block']], 'window_id': s['window']}
+    if s.get('split_without_window') and args[:1] == ['split']:
+        response.pop('window_id')
+    print(json.dumps(response))
 elif args[:2] == ['block', 'ls']:
     print(json.dumps({'blocks': s.get('blocks', [])}))
+elif args[:2] == ['client', 'ls']:
+    print(json.dumps({'clients': s['clients']}))
+elif args[:1] == ['-C'] and args[2:4] == ['do', 'session.select']:
+    if s.get('client_error'):
+        print('fixture sentinel-secret should remain hidden', file=sys.stderr)
+        sys.exit(1)
+    print('{}')
+elif args[:2] == ['block', 'call'] and 'process' in args:
+    print(json.dumps(s.get('process', {})))
 elif args[:1] == ['focus']:
     print('{}')
 else:
@@ -136,6 +149,13 @@ if 'REX_SSH_TEST_EDIT' in os.environ:
             "sessions": [{"session_id": SESSION, "label": "fixture"}],
             "block": BLOCK,
             "window": WINDOW,
+            "clients": [
+                {
+                    "client_id": CLIENT,
+                    "info": {"kind": "app", "platform": "macos", "name": "Rex Beta"},
+                    "session_ids": [SESSION],
+                }
+            ],
             **changes,
         }
         self.scenario.write_text(json.dumps(scenario))
@@ -199,6 +219,42 @@ if 'REX_SSH_TEST_EDIT' in os.environ:
         self.assertEqual(created[0][-1], "ops@db.example")
         self.assertEqual(self.calls("ssh"), [])
 
+    def test_new_connection_selects_correct_app_session_and_window(self) -> None:
+        self.assert_ok(self.run_cli("--no-store", "db"))
+        selected = [args for args in self.calls() if args[:1] == ["-C"]]
+        self.assertEqual(len(selected), 1)
+        self.assertEqual(selected[0][:4], ["-C", CLIENT, "do", "session.select"])
+        self.assertIn("session_id=" + SESSION, selected[0])
+        self.assertIn("window_id=" + WINDOW, selected[0])
+
+    def test_app_focus_refusal_warns_without_exposing_stderr(self) -> None:
+        self.configure_rex(client_error=True)
+        result = self.run_cli("--no-store", "db")
+        self.assert_ok(result)
+        self.assertEqual(len(self.creations()), 1)
+        self.assertNotIn("sentinel-secret", result.stdout + result.stderr)
+        self.assertTrue(
+            result.stderr.strip(), "Focus refusal should have a visible warning"
+        )
+
+    def test_multiple_apps_do_not_select_an_arbitrary_client(self) -> None:
+        self.configure_rex(
+            clients=[
+                {"client_id": CLIENT, "info": {"kind": "app"}},
+                {
+                    "client_id": "client:55555555-5555-7555-8555-555555555555",
+                    "info": {"kind": "app"},
+                },
+            ]
+        )
+        result = self.run_cli("--no-store", "db")
+        self.assert_ok(result)
+        self.assertEqual(len(self.creations()), 1)
+        self.assertFalse(any(args[:1] == ["-C"] for args in self.calls()))
+        self.assertTrue(
+            result.stderr.strip(), "Ambiguous clients should produce a visible warning"
+        )
+
     def test_history_contains_destination_and_attempt_not_command_arguments(
         self,
     ) -> None:
@@ -214,8 +270,8 @@ if 'REX_SSH_TEST_EDIT' in os.environ:
         self.assertEqual(stat.S_IMODE(self.private.stat().st_mode), 0o700)
         self.assertEqual(stat.S_IMODE(self.history.stat().st_mode), 0o600)
 
-    def test_repeated_destination_is_deduplicated(self) -> None:
-        self.assert_ok(self.run_cli("db"))
+    def test_repeated_profile_is_deduplicated(self) -> None:
+        self.assert_ok(self.run_cli("--label", "Database", "db"))
         self.assert_ok(self.run_cli("--new", "--label", "Database", "db"))
         records = json.loads(self.history.read_text())["connections"]
         self.assertEqual([r["destination"] for r in records], ["db"])
@@ -232,7 +288,7 @@ if 'REX_SSH_TEST_EDIT' in os.environ:
         self.assert_ok(self.run_cli("--no-store", "private-target"))
         self.assertEqual(self.history.read_bytes(), before)
 
-    def test_ssh_option_arguments_preserved_but_not_persisted(self) -> None:
+    def test_safe_ssh_option_arguments_are_saved_and_preserved_exactly(self) -> None:
         marker = self.root / "must-not-exist"
         identity = f"/tmp/identity with spaces $(touch {marker})"
         ssh_args = [
@@ -249,14 +305,166 @@ if 'REX_SSH_TEST_EDIT' in os.environ:
         self.assert_ok(self.run_cli("--label", "Advanced", "--", *ssh_args))
         created = self.creations()[0]
         start = created.index("--_connect")
-        self.assertEqual(created[start + 1 :], ["--", *ssh_args])
+        child = created[start + 1 :]
+        self.assertEqual(child[:2], ["--label", "Advanced"])
+        self.assertEqual(child[child.index("--") + 1 :], ssh_args)
         self.assertFalse(marker.exists())
-        if self.private.exists():
-            for file in self.private.iterdir():
-                if file.is_file():
-                    text = file.read_text()
-                    self.assertNotIn("private-target", text)
-                    self.assertNotIn(identity, text)
+        record = json.loads(self.history.read_text())["connections"][0]
+        self.assertEqual(record["ssh_args"], ssh_args)
+
+    def test_unsafe_ssh_options_launch_without_history_or_active_storage(self) -> None:
+        args = [
+            "-o",
+            "ProxyCommand=custom-proxy --opaque private-value",
+            "private-target",
+        ]
+        self.assert_ok(self.run_cli("--", *args))
+        self.assertEqual(self.creations()[0][-len(args) :], args)
+        self.assertFalse(self.private.exists())
+
+    def test_logging_tunnels_and_local_commands_are_not_saved(self) -> None:
+        for options in (
+            ["-E", "/tmp/private-log"],
+            ["-L", "127.0.0.1:8080:private-service:80"],
+            ["-o", "LocalCommand=opaque-helper --argument"],
+        ):
+            with self.subTest(options=options):
+                self.assert_ok(self.run_cli("--", *options, "private-target"))
+                self.assertFalse(self.private.exists())
+
+    def test_safe_parameter_allowlist_survives_saved_profile_validation(self) -> None:
+        args = [
+            "-F",
+            "/tmp/config with spaces",
+            "-l",
+            "admin",
+            "-J",
+            "jump:2222",
+            "-o",
+            "ServerAliveInterval=30",
+            "-o",
+            "IdentitiesOnly=yes",
+            "-v",
+            "db",
+        ]
+        self.assert_ok(self.run_cli("--label", "Allowlist", "--", *args))
+        self.assertEqual(
+            json.loads(self.history.read_text())["connections"][0]["ssh_args"], args
+        )
+        self.assert_ok(self.run_cli("--recent", "Allowlist", "--new"))
+        self.assertEqual(self.creations()[-1][-len(args) :], args)
+
+    def test_legacy_destination_only_profile_still_reopens(self) -> None:
+        self.seed_history(self.record("db", label="Legacy connection"))
+        self.assert_ok(self.run_cli("--recent", "Legacy connection"))
+        self.assertEqual(self.creations()[0][-1], "db")
+
+    def test_saved_parameter_destination_mismatch_is_rejected(self) -> None:
+        self.seed_history(
+            self.record("db", ssh_args=["-i", "/tmp/key", "different-host"])
+        )
+        result = self.run_cli("--recent", "db")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.creations(), [])
+
+    def test_no_store_safe_parameters_are_not_saved(self) -> None:
+        self.assert_ok(
+            self.run_cli("--no-store", "--", "-i", "/tmp/private-key", "user@host")
+        )
+        self.assertFalse(self.private.exists())
+
+    def test_jumpcloud_profile_replays_exact_key_and_user_by_label(self) -> None:
+        args = ["-i", "/tmp/JumpCloud Key", "admin@192.0.2.10"]
+        self.assert_ok(
+            self.run_cli("--label", "JumpCloud DB", "--tags", "pls,phi", "--", *args)
+        )
+        record = json.loads(self.history.read_text())["connections"][0]
+        self.assertEqual(record["ssh_args"], args)
+        self.assertEqual(record["tags"], ["pls", "phi"])
+        self.assert_ok(self.run_cli("--recent", "JumpCloud DB", "--new"))
+        self.assertEqual(self.creations()[-1][-len(args) :], args)
+
+    def test_same_host_different_key_or_label_profiles_are_not_overwritten(
+        self,
+    ) -> None:
+        for label, key in (
+            ("DB admin", "/tmp/admin-key"),
+            ("DB reader", "/tmp/reader-key"),
+        ):
+            self.assert_ok(
+                self.run_cli("--new", "--label", label, "--", "-i", key, "user@db")
+            )
+        rows = json.loads(self.history.read_text())["connections"]
+        self.assertEqual(len(rows), 2)
+        self.assertEqual({r["label"] for r in rows}, {"DB admin", "DB reader"})
+        self.assertEqual(
+            {tuple(r["ssh_args"]) for r in rows},
+            {
+                ("-i", "/tmp/admin-key", "user@db"),
+                ("-i", "/tmp/reader-key", "user@db"),
+            },
+        )
+        before = self.history.read_bytes()
+        result = self.run_cli("--forget", "user@db")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.history.read_bytes(), before)
+        self.assert_ok(self.run_cli("--pin", "DB admin"))
+        rows = json.loads(self.history.read_text())["connections"]
+        self.assertTrue(next(r for r in rows if r["label"] == "DB admin")["pinned"])
+
+    def test_recent_label_ambiguity_never_selects_arbitrary_key(self) -> None:
+        self.seed_history(
+            self.record("db", label="Database", ssh_args=["-i", "/tmp/key-a", "db"]),
+            self.record("db", label="Database", ssh_args=["-i", "/tmp/key-b", "db"]),
+        )
+        result = self.run_cli("--recent", "Database")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.creations(), [])
+
+    def test_picker_replays_saved_safe_ssh_arguments(self) -> None:
+        args = ["-p", "2222", "-i", "/tmp/Key with spaces", "user@db"]
+        self.seed_history(
+            self.record("user@db", label="Database profile", ssh_args=args)
+        )
+        self.env["REX_SSH_TEST_PICK"] = "Database profile"
+        self.assert_ok(self.run_cli())
+        self.assertEqual(self.creations()[0][-len(args) :], args)
+
+    def test_edited_history_cannot_promote_unsafe_options_to_saved_profile(
+        self,
+    ) -> None:
+        self.seed_history(
+            self.record("db", ssh_args=["-o", "ProxyCommand=opaque-value", "db"])
+        )
+        result = self.run_cli("--recent", "db")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.creations(), [])
+
+    def test_different_key_does_not_match_active_profile(self) -> None:
+        self.seed_history(self.record("db", ssh_args=["-i", "/tmp/key-a", "db"]))
+        (self.private / "active.json").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "connections": [
+                        {
+                            "destination": "db",
+                            "label": "db",
+                            "ssh_args": ["-i", "/tmp/key-a", "db"],
+                            "session_id": SESSION,
+                            "window_id": WINDOW,
+                            "block_id": BLOCK,
+                        }
+                    ],
+                }
+            )
+        )
+        self.configure_rex(
+            blocks=[{"block_id": BLOCK, "window_id": WINDOW, "placement": "placed"}]
+        )
+        self.assert_ok(self.run_cli("--", "-i", "/tmp/key-b", "db"))
+        self.assertEqual(len(self.creations()), 1)
+        self.assertFalse(any(args[:1] == ["focus"] for args in self.calls()))
 
     def test_remote_command_is_rejected_without_contacting_host(self) -> None:
         result = self.run_cli("--", "db", "uname", "-a")
