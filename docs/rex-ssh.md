@@ -16,5 +16,5 @@ SSH panes remain open.
 Run the maintained checks from rex-config:
 
 ```sh
-uv run --python '>=3.11' python -m unittest discover -s tests -p 'test_rex_ssh*.py' -v
+uv run --python 3.15 python -m unittest discover -s tests -p 'test_rex_ssh*.py' -v
 ```

@@ -8,6 +8,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-11-16
 
+- Aligned the rex-ssh compatibility launcher with rex-config’s Python 3.15 minimum.
+
 - Moved rex-ssh implementation, IPC helper, tests and usage guide to rex-config. Retained compatibility launch/runtime files so the existing command symlink and running SSH panes keep working; saved profiles and state paths are unchanged.
 
 ### 2026-11-10
