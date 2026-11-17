@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-11-16
+
+- Moved rex-ssh implementation, IPC helper, tests and usage guide to rex-config. Retained compatibility launch/runtime files so the existing command symlink and running SSH panes keep working; saved profiles and state paths are unchanged.
+
 ### 2026-11-10
 
 - Extended `rex-ssh` with validated SSH-parameter history/replay (including JumpCloud identity files), connection tags, exact app tab-selection requests, and live same-host splitting through private local IPC. The companion Rex module supports SSH-aware Cmd+d/Shift+Cmd+d with local-pane fallback; no-store connections keep their arguments out of persistent helper state.
