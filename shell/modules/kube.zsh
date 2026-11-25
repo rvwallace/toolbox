@@ -36,7 +36,9 @@ _k_env() {
   esac
 }
 
-compdef _k_env k.env
+if (( $+functions[compdef] )); then
+    compdef _k_env k.env
+fi
 
 _toolbox_kubectl_load_zsh_completion() {
   local cache_dir cache_file version_file current_version
@@ -52,4 +54,6 @@ _toolbox_kubectl_load_zsh_completion() {
   source "$cache_file" >/dev/null 2>&1 || return 0
 }
 
-_toolbox_kubectl_load_zsh_completion
+if (( $+functions[compdef] )); then
+    _toolbox_kubectl_load_zsh_completion
+fi

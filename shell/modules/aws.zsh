@@ -60,7 +60,9 @@ _aws_env() {
   esac
 }
 
-compdef _aws_env aws.env
+if (( $+functions[compdef] )); then
+    compdef _aws_env aws.env
+fi
 
 # --- Starship Prompt AWS Token TTL Helper ---
 _toolbox_aws_token_ttl() {

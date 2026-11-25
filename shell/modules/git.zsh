@@ -8,4 +8,6 @@ _toolbox_git_ignore_add() {
         '1:file or pattern:_files'
 }
 
-compdef _toolbox_git_ignore_add git.ignore.add
+if (( $+functions[compdef] )); then
+    compdef _toolbox_git_ignore_add git.ignore.add
+fi

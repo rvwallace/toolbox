@@ -41,7 +41,9 @@ _tf_apply_last() {
         '--yes[Apply without confirmation]'
 }
 
-compdef _tf_plan_save terraform.plan.save
-compdef _tf_state_show_save terraform.state.show.save
-compdef _tf_apply_save terraform.apply.save
-compdef _tf_apply_last terraform.apply.last
+if (( $+functions[compdef] )); then
+    compdef _tf_plan_save terraform.plan.save
+    compdef _tf_state_show_save terraform.state.show.save
+    compdef _tf_apply_save terraform.apply.save
+    compdef _tf_apply_last terraform.apply.last
+fi

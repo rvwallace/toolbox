@@ -17,4 +17,6 @@ _toolbox_sesh_load_zsh_completion() {
     source "$cache_file" >/dev/null 2>&1 || return 0
 }
 
-_toolbox_sesh_load_zsh_completion
+if (( $+functions[compdef] )); then
+    _toolbox_sesh_load_zsh_completion
+fi

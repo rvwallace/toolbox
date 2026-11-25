@@ -185,6 +185,7 @@ Toolbox shell modules use a companion-file pattern when a helper needs shell-spe
 - Keep toolbox-owned completions beside the toolbox helper they complete
 - For generated completion scripts, cache them under `${XDG_CACHE_HOME:-~/.cache}/silentcastle/toolbox/completions/` and store a sidecar version file
 - Use `toolbox_completion_cache_ensure <cache_file> <version_file> <current_version> <generator...>` from `shell/init.sh` to refresh cache only when needed
+- Shell command functions also load in noninteractive Zsh. Register or generate Zsh completions only when `compdef` exists, and guard widgets with `[[ -o interactive ]]`.
 - Keep module load paths silent (no startup `echo`); fail soft if completion generation is unavailable
 
 ### Nushell loading

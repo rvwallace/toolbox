@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-11-25
+
+- Keep shell command functions available in noninteractive Zsh while skipping unavailable completion registration and generation, and interactive tmux widgets.
+
 ### 2026-11-16
 
 - Aligned the rex-ssh compatibility launcher with rex-config’s Python 3.15 minimum.

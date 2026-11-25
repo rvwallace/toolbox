@@ -11,10 +11,12 @@ _toolbox_tp() {
         '*::command:_normal'
 }
 
-compdef _toolbox_tp tp
+if (( $+functions[compdef] )); then
+    compdef _toolbox_tp tp
+fi
 
 # Tmux Popup Toggle Widget (Ctrl-X, p)
-if (( $+commands[tmux] )); then
+if [[ -o interactive ]] && (( $+commands[tmux] )); then
     _tmux_popup_toggle() {
         if [[ -z $BUFFER ]]; then
             zle up-history

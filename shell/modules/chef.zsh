@@ -40,4 +40,6 @@ _chef_env() {
   esac
 }
 
-compdef _chef_env chef.env
+if (( $+functions[compdef] )); then
+    compdef _chef_env chef.env
+fi
