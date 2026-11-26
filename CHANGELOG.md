@@ -61,7 +61,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-09-19
 
-- Removed the NvChad/Neovim bootstrap setup and `neovim` package dependencies; editor setup is now managed by scvim
+- Removed the NvChad/Neovim bootstrap setup and `neovim` package dependencies; editor setup moved to `scvim` (now archived at `~/silentcastle/projects/archive/scvim`)
 
 ### 2026-09-09
 

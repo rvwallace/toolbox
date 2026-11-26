@@ -199,8 +199,8 @@ use /path/to/toolbox/shell/init.nu *
 ```
 
 Keep that machine-specific path out of shared `env.nu`. The Nushell Terraform
-adapter resolves its Bash helper from the toolbox module location, so the
-checkout does not need to be next to `sc-nu`.
+adapter resolves its Bash helper from the Toolbox module location. The former
+`sc-nu` configuration is archived at `~/silentcastle/projects/archive/sc-nu`.
 
 Examples in this repo:
 
