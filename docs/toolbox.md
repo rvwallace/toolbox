@@ -108,6 +108,7 @@ Common differences to watch for:
 - `bat` binary is `batcat` on older Ubuntu (package name `bat` is correct on 24.04+)
 - `ffmpeg` requires RPM Fusion on Fedora (handled automatically by bootstrap); it is in default repos on Ubuntu and Arch
 - `yazi` is in Arch official repos and Homebrew but not in Ubuntu apt or Fedora dnf — omit from `apt_packages`/`dnf_packages`; install manually via `sudo snap install yazi --classic` or from the binary releases at github.com/sxyazi/yazi
+- `libssl-dev` / `openssl-devel` / `openssl` and `pkg-config` / `pkgconf-pkg-config` / `pkgconf` are Linux-only build deps for Rust crates such as `cargo-update`; they are omitted from `brew` because macOS already has what cargo needs
 
 ## Shell config (`shell.yaml`)
 

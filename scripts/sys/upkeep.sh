@@ -6,6 +6,34 @@
 
 set -euo pipefail
 
+# On Linux, crates such as cargo-update link openssl-sys and need pkg-config
+# plus openssl.pc (openssl-devel / libssl-dev / openssl). macOS is unchanged.
+linux_openssl_dev_ready() {
+  case "$(uname -s)" in
+    Linux) ;;
+    *) return 0 ;;
+  esac
+  command -v pkg-config &>/dev/null || return 1
+  pkg-config --exists openssl
+}
+
+# Print a [!] notice with the exact distro install line for OpenSSL build deps.
+print_linux_openssl_dev_hint() {
+  echo "[!] Notice: OpenSSL development files are missing (needed to build cargo-update and other Rust crates that use system OpenSSL)."
+  echo "    Install them, then re-run upkeep:"
+  if command -v dnf &>/dev/null; then
+    echo "    sudo dnf install -y openssl-devel pkgconf-pkg-config"
+  elif command -v apt-get &>/dev/null; then
+    echo "    sudo apt install -y libssl-dev pkg-config"
+  elif command -v pacman &>/dev/null; then
+    echo "    sudo pacman -S --needed openssl pkgconf"
+  else
+    echo "    Fedora:  sudo dnf install -y openssl-devel pkgconf-pkg-config"
+    echo "    Debian:  sudo apt install -y libssl-dev pkg-config"
+    echo "    Arch:    sudo pacman -S --needed openssl pkgconf"
+  fi
+}
+
 # Check required and optional dependencies
 check_prereqs() {
   if ! command -v fzf &>/dev/null; then
@@ -29,13 +57,18 @@ check_prereqs() {
   # Optional helper tools for cargo and go
   if command -v cargo &>/dev/null; then
     if ! command -v cargo-install-update &>/dev/null && ! cargo install-update --help &>/dev/null 2>&1; then
-      echo "[!] Notice: 'cargo-update' is missing (needed for Cargo tool updates)."
-      if [[ -t 0 ]]; then
-        local yn="n"
-        read -r -p "    Install cargo-update now? [y/N] " yn || yn="n"
-        [[ "${yn}" =~ ^[Yy]$ ]] && cargo install cargo-update
+      if ! linux_openssl_dev_ready; then
+        print_linux_openssl_dev_hint
+        echo "    Skipping cargo-update install."
       else
-        echo "    Install with: cargo install cargo-update"
+        echo "[!] Notice: 'cargo-update' is missing (needed for Cargo tool updates)."
+        if [[ -t 0 ]]; then
+          local yn="n"
+          read -r -p "    Install cargo-update now? [y/N] " yn || yn="n"
+          [[ "${yn}" =~ ^[Yy]$ ]] && cargo install cargo-update
+        else
+          echo "    Install with: cargo install cargo-update"
+        fi
       fi
     fi
   fi
@@ -197,7 +230,10 @@ update_all() {
   if command -v cargo &>/dev/null; then
     [[ ${updated} -eq 1 ]] && echo ""
     echo "==> [cargo] Updating Cargo packages..."
-    if command -v cargo-install-update &>/dev/null || cargo install-update --help &>/dev/null 2>&1; then
+    if ! linux_openssl_dev_ready; then
+      print_linux_openssl_dev_hint
+      echo "    Skipping Cargo updates."
+    elif command -v cargo-install-update &>/dev/null || cargo install-update --help &>/dev/null 2>&1; then
       cargo install-update -a || true
     else
       echo "cargo-update missing. Run: cargo install cargo-update"
@@ -288,7 +324,10 @@ interactive_update() {
       uv)    uv tool upgrade "${pkg}" ;;
       npm)   npm update --global "${pkg}" ;;
       cargo)
-        if command -v cargo-install-update &>/dev/null || cargo install-update --help &>/dev/null 2>&1; then
+        if ! linux_openssl_dev_ready; then
+          print_linux_openssl_dev_hint
+          echo "    Skipping Cargo update of ${pkg}."
+        elif command -v cargo-install-update &>/dev/null || cargo install-update --help &>/dev/null 2>&1; then
           cargo install-update "${pkg}"
         else
           cargo install "${pkg}"

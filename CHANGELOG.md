@@ -8,6 +8,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-11-25
 
+- Added Linux OpenSSL and `pkg-config` build dependencies (`libssl-dev`/`openssl-devel`/`openssl` and `pkg-config`/`pkgconf-pkg-config`/`pkgconf`) to `deps/toolbox.yaml` so bootstrap can install them. `upkeep` now checks `pkg-config --exists openssl` on Linux before offering `cargo-update` or running Cargo updates, and prints the distro install line if they are missing.
+
 - Keep shell command functions available in noninteractive Zsh while skipping unavailable completion registration and generation, and interactive tmux widgets.
 
 ### 2026-11-16

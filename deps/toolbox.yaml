@@ -1,8 +1,11 @@
 # Toolbox repo prerequisites (beyond uv/go/swift on mac — see docs/toolbox.md).
-# macOS: formula names for Homebrew. Linux: apt_packages / dnf_packages for copy-paste lines.
+# macOS: formula names for Homebrew. Linux: apt_packages / dnf_packages / pacman_packages
+# for auto-install and copy-paste lines.
 #
 # bash: Homebrew only — macOS ships an old bash; Linux uses the distro /usr/bin/bash.
 # ffmpeg: includes ffprobe on both Homebrew and typical apt/dnf packages (no separate ffprobe line).
+# openssl / pkg-config: Linux-only build deps for Rust crates that link openssl-sys
+#   (e.g. cargo-update). Omitted from brew; macOS already has what cargo needs.
 brew:
   - bash
   - ffmpeg
@@ -12,13 +15,19 @@ apt_packages:
   - ffmpeg
   - fzf
   - jq
+  - libssl-dev
+  - pkg-config
 dnf_packages:
   - ffmpeg
   - fzf
   - jq
+  - openssl-devel
+  - pkgconf-pkg-config
 pacman_packages:
   - ffmpeg
   - fzf
   - jq
+  - openssl
+  - pkgconf
 go_install:
   - github.com/arsham/figurine/v2@latest

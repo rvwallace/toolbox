@@ -38,6 +38,17 @@ For full outdated detection and updates across Cargo and Go:
   ```bash
   cargo install cargo-update
   ```
+  On Linux, building `cargo-update` (and other Rust crates that link system OpenSSL) needs the OpenSSL headers and `pkg-config`. Bootstrap installs these from `deps/toolbox.yaml`. If they are missing, `upkeep` prints the distro install line and skips the cargo-update install and Cargo updates instead of attempting a build that will fail. macOS does not need extra packages.
+  ```bash
+  # Fedora
+  sudo dnf install -y openssl-devel pkgconf-pkg-config
+
+  # Debian / Ubuntu
+  sudo apt install -y libssl-dev pkg-config
+
+  # Arch
+  sudo pacman -S --needed openssl pkgconf
+  ```
 - **`gup`**: Recommended for Go binary checking and updates.
   ```bash
   go install github.com/nao1215/gup@latest
